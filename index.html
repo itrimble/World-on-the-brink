@@ -4,96 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>World on the Brink</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-            background: #111;
-            color: white;
-        }
-        #top-bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.7);
-        }
-        #tension-meter {
-            width: 200px;
-            height: 20px;
-            background: #333;
-            position: relative;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        #tension-filled {
-            height: 100%;
-            width: 0%;
-            background: green;
-        }
-        #menu-button {
-            font-size: 24px;
-            cursor: pointer;
-        }
-        #crisis-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-        }
-        #crisis-box {
-            background: #fff;
-            color: #000;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            max-width: 400px;
-        }
-        #crisis-box h2 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        #crisis-box p {
-            font-size: 18px;
-            margin-bottom: 20px;
-        }
-        #tutorial {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            max-width: 400px;
-        }
-        #menu-overlay {
-            position: absolute;
-            top: 50px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 5px;
-            display: none;
-        }
-        button {
-            margin: 5px;
-            padding: 5px 10px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="top-bar">
@@ -114,7 +25,7 @@
     </div>
     <div id="tutorial">
         <h2>Welcome to World on the Brink</h2>
-        <p>Rotate the globe with your mouse or touch. Monitor the tension meter and your political capital. A crisis will appear soon—choose wisely to manage global tensions!</p>
+        <p>Rotate the globe with your mouse or touch. Monitor the tension meter and your political capital. A crisis will appear soon--choose wisely to manage global tensions!</p>
         <button onclick="startGame()">Start Game</button>
     </div>
     <div id="menu-overlay">
@@ -135,11 +46,25 @@
         camera.position.z = 5;
 
         // Realistic globe with Earth texture
-        const texture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg');
-        const geometry = new THREE.SphereGeometry(1, 32, 32);
-        const material = new THREE.MeshPhongMaterial({ map: texture });
-        const globe = new THREE.Mesh(geometry, material);
-        scene.add(globe);
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(
+            'https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg',
+            (texture) => {
+                const geometry = new THREE.SphereGeometry(1, 32, 32);
+                const material = new THREE.MeshPhongMaterial({ map: texture });
+                const globe = new THREE.Mesh(geometry, material);
+                scene.add(globe);
+            },
+            undefined,
+            () => {
+                console.error('Failed to load texture');
+                // Fallback: Add a simple sphere without texture
+                const geometry = new THREE.SphereGeometry(1, 32, 32);
+                const material = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+                const globe = new THREE.Mesh(geometry, material);
+                scene.add(globe);
+            }
+        );
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0x404040);
@@ -159,10 +84,10 @@
         let tension = 0;
         const crises = [
             "Naval standoff in the South China Sea threatens global trade!",
-            "Trade war with the EU escalates—your economy is at risk!",
-            "Military buildup on the Korean Peninsula—war could erupt!",
-            "Cyberattack disrupts global markets—finger-pointing begins!",
-            "Climate protests halt energy production—public unrest grows!"
+            "Trade war with the EU escalates--your economy is at risk!",
+            "Military buildup on the Korean Peninsula--war could erupt!",
+            "Cyberattack disrupts global markets--finger-pointing begins!",
+            "Climate protests halt energy production--public unrest grows!"
         ];
 
         // Animation loop
@@ -225,13 +150,17 @@
             } else {
                 cost = 0;
                 tensionChange = 10;
-                message = "You ignored the crisis—tensions rise.";
+                message = "You ignored the crisis--tensions rise.";
             }
 
             if (politicalCapital >= cost) {
                 politicalCapital -= cost;
                 tension += tensionChange;
                 tension = Math.max(0, Math.min(100, tension));
+                if (politicalCapital <= 0) {
+                    alert("Political capital depleted! Game over.");
+                    location.reload();
+                }
                 document.getElementById('capital').innerText = politicalCapital;
                 document.getElementById('crisis-overlay').style.display = 'none';
                 updateTensionMeter();
