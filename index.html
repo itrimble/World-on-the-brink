@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World on the Brink</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+        }
+        #top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        #tension-meter {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #tension-filled {
+            height: 100%;
+            width: 0%;
+            background: green;
+        }
+        #menu-button {
+            font-size: 24px;
+            cursor: pointer;
+        }
+        #crisis-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        #crisis-box {
+            background: #fff;
+            color: #000;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 400px;
+        }
+        #crisis-box h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        #crisis-box p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        #tutorial {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 400px;
+        }
+        #menu-overlay {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        button {
+            margin: 5px;
+            padding: 5px 10px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="top-bar">
+        <div id="resources">Political Capital: <span id="capital">100</span> 💼</div>
+        <div id="tension-meter">
+            <div id="tension-filled"></div>
+        </div>
+        <div id="menu-button">≡</div>
+    </div>
+    <div id="crisis-overlay">
+        <div id="crisis-box">
+            <h2>Crisis Alert!</h2>
+            <p id="crisis-text"></p>
+            <button onclick="resolveCrisis('diplomacy')">Diplomacy (Cost: 20)</button>
+            <button onclick="resolveCrisis('military')">Military (Cost: 50)</button>
+            <button onclick="resolveCrisis('ignore')">Ignore (Cost: 0)</button>
+        </div>
+    </div>
+    <div id="tutorial">
+        <h2>Welcome to World on the Brink</h2>
+        <p>Rotate the globe with your mouse or touch. Monitor the tension meter and your political capital. A crisis will appear soon—choose wisely to manage global tensions!</p>
+        <button onclick="startGame()">Start Game</button>
+    </div>
+    <div id="menu-overlay">
+        <button onclick="location.reload()">Restart</button>
+        <button onclick="document.getElementById('tutorial').style.display = 'block'">Help</button>
+        <button onclick="alert('Settings coming soon!')">Settings</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Scene setup for 3D globe
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        camera.position.z = 5;
+
+        // Realistic globe with Earth texture
+        const texture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg');
+        const geometry = new THREE.SphereGeometry(1, 32, 32);
+        const material = new THREE.MeshPhongMaterial({ map: texture });
+        const globe = new THREE.Mesh(geometry, material);
+        scene.add(globe);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 3, 5);
+        scene.add(directionalLight);
+
+        // Orbit controls for interaction
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.25;
+        controls.enableZoom = true;
+
+        // Game state variables
+        let politicalCapital = 100;
+        let tension = 0;
+        const crises = [
+            "Naval standoff in the South China Sea threatens global trade!",
+            "Trade war with the EU escalates—your economy is at risk!",
+            "Military buildup on the Korean Peninsula—war could erupt!",
+            "Cyberattack disrupts global markets—finger-pointing begins!",
+            "Climate protests halt energy production—public unrest grows!"
+        ];
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Update tension meter visually
+        function updateTensionMeter() {
+            const filled = document.getElementById('tension-filled');
+            const percentage = (tension / 100) * 100;
+            filled.style.width = percentage + '%';
+            const hue = 120 - (tension * 1.2);
+            filled.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
+        }
+
+        // Start the game after tutorial
+        function startGame() {
+            document.getElementById('tutorial').style.display = 'none';
+            setTimeout(triggerCrisis, 3000); // First crisis after 3 seconds
+        }
+
+        // Trigger a random crisis
+        function triggerCrisis() {
+            tension += 10;
+            if (tension >= 100) {
+                alert("Tension too high! Game over.");
+                location.reload();
+            } else {
+                const crisisText = crises[Math.floor(Math.random() * crises.length)];
+                document.getElementById('crisis-text').innerText = crisisText;
+                document.getElementById('crisis-overlay').style.display = 'flex';
+                updateTensionMeter();
+            }
+        }
+
+        // Resolve crisis based on player choice
+        function resolveCrisis(choice) {
+            let cost = 0;
+            let tensionChange = 0;
+            let message = "";
+            if (choice === 'diplomacy') {
+                cost = 20;
+                tensionChange = -15;
+                message = "Crisis resolved peacefully through diplomacy!";
+            } else if (choice === 'military') {
+                cost = 50;
+                tensionChange = -5;
+                message = "Crisis resolved with military force!";
+            } else {
+                cost = 0;
+                tensionChange = 10;
+                message = "You ignored the crisis—tensions rise.";
+            }
+
+            if (politicalCapital >= cost) {
+                politicalCapital -= cost;
+                tension += tensionChange;
+                tension = Math.max(0, Math.min(100, tension));
+                document.getElementById('capital').innerText = politicalCapital;
+                document.getElementById('crisis-overlay').style.display = 'none';
+                updateTensionMeter();
+                alert(message);
+                setTimeout(triggerCrisis, 5000); // Next crisis after 5 seconds
+            } else {
+                alert("Not enough political capital!");
+            }
+        }
+
+        // Menu button toggle
+        document.getElementById('menu-button').addEventListener('click', () => {
+            const menu = document.getElementById('menu-overlay');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        });
+
+        // Initialize tension meter
+        updateTensionMeter();
+    </script>
+</body>
+</html>
