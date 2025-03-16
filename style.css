@@ -132,14 +132,14 @@ main {
 
 /* Menu overlay */
 #menu-overlay {
-  position: absolute;
-  top: 50px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 10px;
-  border-radius: 5px;
-  display: none;
-  z-index: 20;
+    position: absolute;
+    top: 50px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+    display: none; /* Hidden by default */
+    z-index: 1000; /* Ensures it’s on top */
 }
 
 /* Button styling */
