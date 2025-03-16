@@ -4,170 +4,62 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>World on the Brink</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: white;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+        }
+        #event-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            color: white;
+            text-align: center;
+            max-width: 400px;
+        }
+        #event-panel button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #event-panel button:hover {
+            background: #555;
+        }
+    </style>
 </head>
 <body>
-    <div id="top-bar">
-        <div id="resources">Political Capital: <span id="capital">100</span> 💼</div>
-        <div id="tension-meter">
-            <div id="tension-filled"></div>
-        </div>
-        <div id="menu-button">≡</div>
+    <div id="ui">
+        <div>Tension: <span id="tension">0</span></div>
+        <div>USA Influence: <span id="usa-influence">0</span></div>
+        <div>USSR Influence: <span id="ussr-influence">0</span></div>
     </div>
-    <div id="crisis-overlay">
-        <div id="crisis-box">
-            <h2>Crisis Alert!</h2>
-            <p id="crisis-text"></p>
-            <button onclick="resolveCrisis('diplomacy')">Diplomacy (Cost: 20)</button>
-            <button onclick="resolveCrisis('military')">Military (Cost: 50)</button>
-            <button onclick="resolveCrisis('ignore')">Ignore (Cost: 0)</button>
-        </div>
+    <div id="event-panel">
+        <p id="event-description"></p>
+        <button id="choice1">Choice 1</button>
+        <button id="choice2">Choice 2</button>
+        <button id="choice3">Choice 3</button>
     </div>
-    <div id="tutorial">
-        <h2>Welcome to World on the Brink</h2>
-        <p>Rotate the globe with your mouse or touch. Monitor the tension meter and your political capital. Crises will arise—choose wisely to manage global tensions!</p>
-        <button onclick="startGame()">Start Game</button>
-    </div>
-    <div id="menu-overlay">
-        <button onclick="location.reload()">Restart</button>
-        <button onclick="document.getElementById('tutorial').style.display = 'block'">Help</button>
-        <button onclick="alert('Settings coming soon!')">Settings</button>
-    </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script>
-        // Scene setup for 3D globe
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-        camera.position.z = 5;
-
-        // Realistic globe with Earth texture
-        const texture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg');
-        const geometry = new THREE.SphereGeometry(1, 32, 32);
-        const material = new THREE.MeshPhongMaterial({ map: texture });
-        const globe = new THREE.Mesh(geometry, material);
-        scene.add(globe);
-
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0x404040);
-        scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(5, 3, 5);
-        scene.add(directionalLight);
-
-        // Orbit controls for interaction
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.25;
-        controls.enableZoom = true;
-
-        // Game state variables
-        let politicalCapital = 100;
-        let tension = 0;
-        let crisisInterval = 5000; // Initial crisis interval in milliseconds
-        const crises = [
-            "Naval standoff in the South China Sea threatens global trade!",
-            "Trade war with the EU escalates—your economy is at risk!",
-            "Military buildup on the Korean Peninsula—war could erupt!",
-            "Cyberattack disrupts global markets—finger-pointing begins!",
-            "Climate protests halt energy production—public unrest grows!"
-        ];
-
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // Update tension meter visually
-        function updateTensionMeter() {
-            const filled = document.getElementById('tension-filled');
-            const percentage = (tension / 100) * 100;
-            filled.style.width = percentage + '%';
-            const hue = 120 - (tension * 1.2);
-            filled.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
-        }
-
-        // Start the game after tutorial
-        function startGame() {
-            document.getElementById('tutorial').style.display = 'none';
-            setTimeout(triggerCrisis, 3000); // First crisis after 3 seconds
-        }
-
-        // Trigger a random crisis with dynamic tension increase
-        function triggerCrisis() {
-            tension += 10 + Math.floor(Math.random() * 10); // Random increase between 10 and 19
-            if (tension >= 100) {
-                alert("Tension too high! Game over.");
-                location.reload();
-            } else {
-                const crisisText = crises[Math.floor(Math.random() * crises.length)];
-                document.getElementById('crisis-text').innerText = crisisText;
-                document.getElementById('crisis-overlay').style.display = 'flex';
-                updateTensionMeter();
-            }
-        }
-
-        // Resolve crisis based on player choice with dynamic consequences
-        function resolveCrisis(choice) {
-            let cost = 0;
-            let tensionChange = 0;
-            let message = "";
-            if (choice === 'diplomacy') {
-                cost = 20;
-                tensionChange = -15;
-                message = "Crisis resolved peacefully through diplomacy!";
-            } else if (choice === 'military') {
-                cost = 50;
-                tensionChange = -5;
-                message = "Crisis resolved with military force!";
-            } else {
-                cost = 0;
-                tensionChange = 15 + Math.floor(Math.random() * 10); // Random increase 15-24
-                message = "You ignored the crisis—tensions rise significantly!";
-            }
-
-            if (politicalCapital >= cost) {
-                politicalCapital -= cost;
-                tension += tensionChange;
-                tension = Math.max(0, Math.min(100, tension));
-                document.getElementById('capital').innerText = politicalCapital;
-                document.getElementById('crisis-overlay').style.display = 'none';
-                updateTensionMeter();
-                alert(message);
-                reduceCrisisInterval(); // Make crises more frequent over time
-                setTimeout(triggerCrisis, crisisInterval); // Next crisis based on dynamic interval
-            } else {
-                alert("Not enough political capital!");
-            }
-        }
-
-        // Reduce crisis interval for progressive difficulty
-        function reduceCrisisInterval() {
-            crisisInterval = Math.max(1000, crisisInterval - 500); // Decrease interval by 500ms, minimum 1 second
-        }
-
-        // Menu button toggle
-        document.getElementById('menu-button').addEventListener('click', () => {
-            const menu = document.getElementById('menu-overlay');
-            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-        });
-
-        // Initialize tension meter
-        updateTensionMeter();
-    </script>
+    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+    <script src="game.js"></script>
 </body>
 </html>
