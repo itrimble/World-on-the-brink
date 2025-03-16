@@ -1,5 +1,9 @@
 class Game {
     constructor() {
+        // Log to verify script loading
+        console.log('THREE:', THREE);
+        console.log('OrbitControls:', THREE.OrbitControls);
+
         // Initialize Three.js scene
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -27,9 +31,13 @@ class Game {
         // Position camera
         this.camera.position.z = 10;
 
-        // Add orbit controls
-        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
-        this.controls.enablePan = false;
+        // Initialize OrbitControls with error handling
+        try {
+            this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+            this.controls.enablePan = false;
+        } catch (e) {
+            console.error('Failed to initialize OrbitControls:', e);
+        }
 
         // Game state
         this.politicalCapital = 100;
@@ -55,7 +63,7 @@ class Game {
                     { text: "Stay neutral", effects: { tension: 2, influence: { USA: -5, USSR: 5 }, capital: 0 } }
                 ]
             }
-            // Add more events here as needed
+            // Add more events here
         ];
 
         // Start event timer
@@ -74,7 +82,7 @@ class Game {
 
     update() {
         if (!this.isPaused) {
-            this.controls.update();
+            if (this.controls) this.controls.update();
             // Add subtle tension increase over time
             this.tension += 0.01;
             this.updateUI();
@@ -146,13 +154,13 @@ class Game {
     }
 }
 
-// Initialize and run the game
-const game = new Game();
-
-function loop() {
-    game.update();
-    game.render();
-    requestAnimationFrame(loop);
-}
-
-loop();
+// Initialize game after all scripts are loaded
+window.addEventListener('load', () => {
+    const game = new Game();
+    function loop() {
+        game.update();
+        game.render();
+        requestAnimationFrame(loop);
+    }
+    loop();
+});
