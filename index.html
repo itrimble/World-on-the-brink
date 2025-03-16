@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>World on the Brink v0.3</title>
+    <title>World on the Brink v0.4</title>
     <style>
         body {
             margin: 0;
@@ -70,6 +70,22 @@
         #event-panel button:hover {
             background: #555;
         }
+        #zoom-in-button, #zoom-out-button {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+        }
+        #zoom-out-button {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -91,6 +107,8 @@
         <button id="choice2">Choice 2</button>
         <button id="choice3">Choice 3</button>
     </div>
+    <button id="zoom-in-button" onclick="game.zoomToMap()">Zoom In</button>
+    <button id="zoom-out-button" onclick="game.zoomToGlobe()">Zoom Out</button>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="game.js"></script>
