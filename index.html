@@ -25,7 +25,7 @@
     </div>
     <div id="tutorial">
         <h2>Welcome to World on the Brink</h2>
-        <p>Rotate the globe with your mouse or touch. Monitor the tension meter and your political capital. A crisis will appear soon--choose wisely to manage global tensions!</p>
+        <p>Rotate the globe with your mouse or touch. Monitor the tension meter and your political capital. A crisis will appear soon—choose wisely to manage global tensions!</p>
         <button onclick="startGame()">Start Game</button>
     </div>
     <div id="menu-overlay">
@@ -35,7 +35,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script>
         // Scene setup for 3D globe
         const scene = new THREE.Scene();
@@ -46,25 +46,11 @@
         camera.position.z = 5;
 
         // Realistic globe with Earth texture
-        const textureLoader = new THREE.TextureLoader();
-        textureLoader.load(
-            'https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg',
-            (texture) => {
-                const geometry = new THREE.SphereGeometry(1, 32, 32);
-                const material = new THREE.MeshPhongMaterial({ map: texture });
-                const globe = new THREE.Mesh(geometry, material);
-                scene.add(globe);
-            },
-            undefined,
-            () => {
-                console.error('Failed to load texture');
-                // Fallback: Add a simple sphere without texture
-                const geometry = new THREE.SphereGeometry(1, 32, 32);
-                const material = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-                const globe = new THREE.Mesh(geometry, material);
-                scene.add(globe);
-            }
-        );
+        const texture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg');
+        const geometry = new THREE.SphereGeometry(1, 32, 32);
+        const material = new THREE.MeshPhongMaterial({ map: texture });
+        const globe = new THREE.Mesh(geometry, material);
+        scene.add(globe);
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0x404040);
@@ -79,15 +65,15 @@
         controls.dampingFactor = 0.25;
         controls.enableZoom = true;
 
-        // Game state variables
+        // Game state variables (moved to the top to avoid TDZ issues)
         let politicalCapital = 100;
         let tension = 0;
         const crises = [
             "Naval standoff in the South China Sea threatens global trade!",
-            "Trade war with the EU escalates--your economy is at risk!",
-            "Military buildup on the Korean Peninsula--war could erupt!",
-            "Cyberattack disrupts global markets--finger-pointing begins!",
-            "Climate protests halt energy production--public unrest grows!"
+            "Trade war with the EU escalates—your economy is at risk!",
+            "Military buildup on the Korean Peninsula—war could erupt!",
+            "Cyberattack disrupts global markets—finger-pointing begins!",
+            "Climate protests halt energy production—public unrest grows!"
         ];
 
         // Animation loop
@@ -96,14 +82,13 @@
             controls.update();
             renderer.render(scene, camera);
         }
-        animate();
 
         // Handle window resize
-        window.addEventListener('resize', () => {
+        function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        }
 
         // Update tension meter visually
         function updateTensionMeter() {
@@ -150,17 +135,13 @@
             } else {
                 cost = 0;
                 tensionChange = 10;
-                message = "You ignored the crisis--tensions rise.";
+                message = "You ignored the crisis—tensions rise.";
             }
 
             if (politicalCapital >= cost) {
                 politicalCapital -= cost;
                 tension += tensionChange;
                 tension = Math.max(0, Math.min(100, tension));
-                if (politicalCapital <= 0) {
-                    alert("Political capital depleted! Game over.");
-                    location.reload();
-                }
                 document.getElementById('capital').innerText = politicalCapital;
                 document.getElementById('crisis-overlay').style.display = 'none';
                 updateTensionMeter();
@@ -172,13 +153,24 @@
         }
 
         // Menu button toggle
-        document.getElementById('menu-button').addEventListener('click', () => {
+        function toggleMenu() {
             const menu = document.getElementById('menu-overlay');
             menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-        });
+        }
 
-        // Initialize tension meter
-        updateTensionMeter();
+        // Initialize the game
+        function init() {
+            // Start the animation loop
+            animate();
+            // Add event listeners
+            window.addEventListener('resize', onWindowResize);
+            document.getElementById('menu-button').addEventListener('click', toggleMenu);
+            // Initialize tension meter
+            updateTensionMeter();
+        }
+
+        // Run the initialization
+        init();
     </script>
 </body>
 </html>
