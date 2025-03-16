@@ -6,6 +6,7 @@ class Game {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(this.renderer.domElement);
 
+        // Globe setup
         const textureLoader = new THREE.TextureLoader();
         const earthTexture = textureLoader.load('https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg');
         const geometry = new THREE.SphereGeometry(5, 32, 32);
@@ -23,8 +24,8 @@ class Game {
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enablePan = false;
 
-        // Map plane (initially invisible)
-        const mapGeometry = new THREE.PlaneGeometry(10, 10);
+        // Map plane setup (initially invisible)
+        const mapGeometry = new THREE.PlaneGeometry(20, 20);
         const mapMaterial = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0 });
         this.mapPlane = new THREE.Mesh(mapGeometry, mapMaterial);
         this.mapPlane.position.set(0, 0, 5);
@@ -36,11 +37,16 @@ class Game {
         this.influence = { USA: 0, USSR: 0 };
         this.isPaused = false;
         this.currentCrisis = null;
+        this.isMapView = false;
+        this.targetCameraPosition = new THREE.Vector3();
+        this.rotationProgress = 0;
 
         // Regions and events for March 2025
         this.regions = {
             "South China Sea": { lat: 12, lon: 113 },
-            "Europe": { lat: 50, lon: 15 }
+            "Europe": { lat: 50, lon: 15 },
+            "Sahel Region": { lat: 15, lon: 0 },
+            "Middle East": { lat: 30, lon: 45 }
         };
         this.events = [
             {
@@ -60,6 +66,24 @@ class Game {
                     { text: "Impose sanctions", effects: { tension: 5, influence: { USA: 5, USSR: -5 }, capital: -10 } },
                     { text: "Do nothing", effects: { tension: 2, influence: { USA: -2, USSR: 2 }, capital: 0 } }
                 ]
+            },
+            {
+                description: "Drought in the Sahel Region sparks resource wars!",
+                region: "Sahel Region",
+                choices: [
+                    { text: "Send humanitarian aid", effects: { tension: 5, influence: { USA: 10, USSR: -5 }, capital: -10 } },
+                    { text: "Deploy peacekeeping forces", effects: { tension: 10, influence: { USA: 15, USSR: -10 }, capital: -20 } },
+                    { text: "Ignore the crisis", effects: { tension: 0, influence: { USA: -5, USSR: 5 }, capital: 0 } }
+                ]
+            },
+            {
+                description: "Financial crisis in the Middle East triggers unrest!",
+                region: "Middle East",
+                choices: [
+                    { text: "Provide economic support", effects: { tension: 5, influence: { USA: 10, USSR: -5 }, capital: -10 } },
+                    { text: "Mediate negotiations", effects: { tension: 3, influence: { USA: 5, USSR: -3 }, capital: -5 } },
+                    { text: "Do nothing", effects: { tension: 2, influence: { USA: -3, USSR: 3 }, capital: 0 } }
+                ]
             }
         ];
 
@@ -73,14 +97,21 @@ class Game {
 
     update() {
         if (!this.isPaused) {
-            this.controls.update();
-            this.tension += 0.01;
-            this.updateUI();
-
-            if (this.currentCrisis && this.isRegionCentered(this.currentCrisis.region)) {
-                console.log("Region centered! Zoom in to resolve the crisis.");
-                // Enable zoom-in logic here (e.g., mouse wheel or button)
+            if (!this.isMapView) {
+                if (this.rotationProgress < 1 && this.currentCrisis) {
+                    this.rotationProgress += 0.01;
+                    this.camera.position.lerp(this.targetCameraPosition, this.rotationProgress);
+                    this.camera.lookAt(0, 0, 0);
+                }
+                this.controls.update();
+                this.tension += 0.01;
+                if (this.currentCrisis && this.isRegionCentered(this.currentCrisis.region)) {
+                    document.getElementById('zoom-in-button').style.display = 'block';
+                } else {
+                    document.getElementById('zoom-in-button').style.display = 'none';
+                }
             }
+            this.updateUI();
         }
     }
 
@@ -98,6 +129,8 @@ class Game {
 
     triggerEvent() {
         this.currentCrisis = this.events[Math.floor(Math.random() * this.events.length)];
+        this.rotationProgress = 0;
+        this.setCameraToRegion(this.currentCrisis.region);
         this.highlightRegion(this.currentCrisis.region);
         const panel = document.getElementById('event-panel');
         document.getElementById('event-description').innerText = `${this.currentCrisis.description} Navigate to ${this.currentCrisis.region} on the globe.`;
@@ -106,6 +139,17 @@ class Game {
         document.getElementById('choice3').innerText = this.currentCrisis.choices[2].text;
         panel.style.display = 'block';
         this.isPaused = true;
+    }
+
+    setCameraToRegion(regionName) {
+        const region = this.regions[regionName];
+        const { lat, lon } = region;
+        const phi = (90 - lat) * (Math.PI / 180);
+        const theta = (lon + 180) * (Math.PI / 180);
+        const x = -10 * Math.sin(phi) * Math.cos(theta);
+        const y = 10 * Math.cos(phi);
+        const z = 10 * Math.sin(phi) * Math.sin(theta);
+        this.targetCameraPosition.set(x, y, z);
     }
 
     highlightRegion(regionName) {
@@ -140,8 +184,35 @@ class Game {
 
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
-        const threshold = 100; // Pixels from center
+        const threshold = 100;
         return Math.abs(screenX - centerX) < threshold && Math.abs(screenY - centerY) < threshold;
+    }
+
+    zoomToMap() {
+        if (!this.currentCrisis || !this.isRegionCentered(this.currentCrisis.region)) return;
+        this.isMapView = true;
+        this.controls.enabled = false;
+        this.camera.position.set(0, 0, 10);
+        this.camera.lookAt(0, 0, 0);
+        this.globe.visible = false;
+        this.mapPlane.material.opacity = 1;
+        document.getElementById('event-panel').style.display = 'none';
+        document.getElementById('zoom-in-button').style.display = 'none';
+        document.getElementById('zoom-out-button').style.display = 'block';
+    }
+
+    zoomToGlobe() {
+        this.isMapView = false;
+        this.controls.enabled = true;
+        this.camera.position.set(0, 0, 10);
+        this.camera.lookAt(0, 0, 0);
+        this.globe.visible = true;
+        this.mapPlane.material.opacity = 0;
+        document.getElementById('zoom-out-button').style.display = 'none';
+        if (this.currentCrisis) {
+            document.getElementById('event-panel').style.display = 'block';
+            document.getElementById('zoom-in-button').style.display = 'block';
+        }
     }
 
     applyChoice(choiceIndex) {
@@ -151,8 +222,13 @@ class Game {
         this.influence.USSR += choice.effects.influence.USSR;
         this.politicalCapital += choice.effects.capital;
         document.getElementById('event-panel').style.display = 'none';
+        document.getElementById('zoom-in-button').style.display = 'none';
         this.isPaused = false;
         this.currentCrisis = null;
+        this.globe.visible = true;
+        this.mapPlane.material.opacity = 0;
+        this.isMapView = false;
+        this.controls.enabled = true;
         this.updateUI();
 
         if (this.tension >= 100) {
@@ -177,18 +253,24 @@ class Game {
         this.influence = { USA: 0, USSR: 0 };
         this.isPaused = false;
         this.currentCrisis = null;
+        this.isMapView = false;
+        this.controls.enabled = true;
+        this.globe.visible = true;
+        this.mapPlane.material.opacity = 0;
+        document.getElementById('zoom-in-button').style.display = 'none';
+        document.getElementById('zoom-out-button').style.display = 'none';
         this.updateUI();
     }
 }
 
 window.addEventListener('load', () => {
-    const game = new Game();
-    document.getElementById('choice1').addEventListener('click', () => game.applyChoice(0));
-    document.getElementById('choice2').addEventListener('click', () => game.applyChoice(1));
-    document.getElementById('choice3').addEventListener('click', () => game.applyChoice(2));
+    window.game = new Game();
+    document.getElementById('choice1').addEventListener('click', () => window.game.applyChoice(0));
+    document.getElementById('choice2').addEventListener('click', () => window.game.applyChoice(1));
+    document.getElementById('choice3').addEventListener('click', () => window.game.applyChoice(2));
     function loop() {
-        game.update();
-        game.render();
+        window.game.update();
+        window.game.render();
         requestAnimationFrame(loop);
     }
     loop();
