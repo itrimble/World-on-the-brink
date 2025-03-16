@@ -25,7 +25,7 @@
     </div>
     <div id="tutorial">
         <h2>Welcome to World on the Brink</h2>
-        <p>Rotate the globe with your mouse or touch. Monitor the tension meter and your political capital. A crisis will appear soon—choose wisely to manage global tensions!</p>
+        <p>Rotate the globe with your mouse or touch. Monitor the tension meter and your political capital. Crises will arise—choose wisely to manage global tensions!</p>
         <button onclick="startGame()">Start Game</button>
     </div>
     <div id="menu-overlay">
@@ -65,9 +65,10 @@
         controls.dampingFactor = 0.25;
         controls.enableZoom = true;
 
-        // Game state variables (moved to the top to avoid TDZ issues)
+        // Game state variables
         let politicalCapital = 100;
         let tension = 0;
+        let crisisInterval = 5000; // Initial crisis interval in milliseconds
         const crises = [
             "Naval standoff in the South China Sea threatens global trade!",
             "Trade war with the EU escalates—your economy is at risk!",
@@ -82,13 +83,14 @@
             controls.update();
             renderer.render(scene, camera);
         }
+        animate();
 
         // Handle window resize
-        function onWindowResize() {
+        window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        }
+        });
 
         // Update tension meter visually
         function updateTensionMeter() {
@@ -105,9 +107,9 @@
             setTimeout(triggerCrisis, 3000); // First crisis after 3 seconds
         }
 
-        // Trigger a random crisis
+        // Trigger a random crisis with dynamic tension increase
         function triggerCrisis() {
-            tension += 10;
+            tension += 10 + Math.floor(Math.random() * 10); // Random increase between 10 and 19
             if (tension >= 100) {
                 alert("Tension too high! Game over.");
                 location.reload();
@@ -119,7 +121,7 @@
             }
         }
 
-        // Resolve crisis based on player choice
+        // Resolve crisis based on player choice with dynamic consequences
         function resolveCrisis(choice) {
             let cost = 0;
             let tensionChange = 0;
@@ -134,8 +136,8 @@
                 message = "Crisis resolved with military force!";
             } else {
                 cost = 0;
-                tensionChange = 10;
-                message = "You ignored the crisis—tensions rise.";
+                tensionChange = 15 + Math.floor(Math.random() * 10); // Random increase 15-24
+                message = "You ignored the crisis—tensions rise significantly!";
             }
 
             if (politicalCapital >= cost) {
@@ -146,31 +148,26 @@
                 document.getElementById('crisis-overlay').style.display = 'none';
                 updateTensionMeter();
                 alert(message);
-                setTimeout(triggerCrisis, 5000); // Next crisis after 5 seconds
+                reduceCrisisInterval(); // Make crises more frequent over time
+                setTimeout(triggerCrisis, crisisInterval); // Next crisis based on dynamic interval
             } else {
                 alert("Not enough political capital!");
             }
         }
 
+        // Reduce crisis interval for progressive difficulty
+        function reduceCrisisInterval() {
+            crisisInterval = Math.max(1000, crisisInterval - 500); // Decrease interval by 500ms, minimum 1 second
+        }
+
         // Menu button toggle
-        function toggleMenu() {
+        document.getElementById('menu-button').addEventListener('click', () => {
             const menu = document.getElementById('menu-overlay');
             menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-        }
+        });
 
-        // Initialize the game
-        function init() {
-            // Start the animation loop
-            animate();
-            // Add event listeners
-            window.addEventListener('resize', onWindowResize);
-            document.getElementById('menu-button').addEventListener('click', toggleMenu);
-            // Initialize tension meter
-            updateTensionMeter();
-        }
-
-        // Run the initialization
-        init();
+        // Initialize tension meter
+        updateTensionMeter();
     </script>
 </body>
 </html>
