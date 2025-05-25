@@ -4,102 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>World on the Brink v0.4</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: #000;
-        }
-        #ui {
-            position: absolute;
-            top: 0;
-            left: 0;
-            color: white;
-            padding: 10px;
-            font-family: Arial, sans-serif;
-        }
-        #hamburger {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 24px;
-            cursor: pointer;
-            color: white;
-        }
-        #menu {
-            position: absolute;
-            top: 40px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 10px;
-            border-radius: 5px;
-            display: none;
-        }
-        #menu button {
-            display: block;
-            margin: 5px 0;
-            padding: 5px 10px;
-            background: #333;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        #event-panel {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            padding: 20px;
-            border-radius: 10px;
-            display: none;
-            color: white;
-            text-align: center;
-            max-width: 400px;
-        }
-        #event-panel button {
-            margin: 5px;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            background: #333;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-        #event-panel button:hover {
-            background: #555;
-        }
-        #zoom-in-button, #zoom-out-button {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 10px 20px;
-            background: #333;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            display: none;
-        }
-        #zoom-out-button {
-            display: none;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="ui">
-        <div>Political Capital: <span id="capital">100</span></div>
-        <div>Tension: <span id="tension">0</span></div>
-        <div>USA Influence: <span id="usa-influence">0</span></div>
-        <div>USSR Influence: <span id="ussr-influence">0</span></div>
+    <div id="top-bar">
+        <div id="resources">
+            <div>Political Capital: <span id="capital">100</span></div>
+            <div>Tension: <span id="tension">0</span></div>
+            <div>USA Influence: <span id="usa-influence">0</span></div>
+            <div>USSR Influence: <span id="ussr-influence">0</span></div>
+        </div>
+        <!-- If a visual tension meter bar is needed, it would be placed here -->
     </div>
     <div id="hamburger">☰</div>
     <div id="menu">
-        <button onclick="alert('Settings coming soon!')">Settings</button>
-        <button onclick="alert('Help coming soon!')">Help</button>
-        <button onclick="alert('Event Log coming soon!')">Event Log</button>
+        <button onclick="console.log('Settings button clicked - feature coming soon')">Settings</button>
+        <button onclick="console.log('Help button clicked - feature coming soon')">Help</button>
+        <button onclick="console.log('Event Log button clicked - feature coming soon')">Event Log</button>
     </div>
     <div id="event-panel">
         <p id="event-description"></p>
@@ -107,8 +28,8 @@
         <button id="choice2">Choice 2</button>
         <button id="choice3">Choice 3</button>
     </div>
-    <button id="zoom-in-button" onclick="game.zoomToMap()">Zoom In</button>
-    <button id="zoom-out-button" onclick="game.zoomToGlobe()">Zoom Out</button>
+    <button id="zoom-in-button">Zoom In</button>
+    <button id="zoom-out-button">Zoom Out</button>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="game.js"></script>
