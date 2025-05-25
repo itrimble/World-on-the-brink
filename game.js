@@ -39,7 +39,15 @@ class Game {
         this.currentCrisis = null;
         this.isMapView = false;
         this.targetCameraPosition = new THREE.Vector3();
-        this.rotationProgress = 0;
+        // this.rotationProgress = 0; // Will be removed for new Lerp
+
+        // Map plane animation properties
+        this.mapOpacityTarget = 0;
+        this.isAnimatingMapOpacity = false;
+        this.mapPlaneFadeSpeed = 0.05; // Opacity change per frame
+
+        // Region highlight management
+        this.currentHighlight = null;
 
         // Regions and events for March 2025
         this.regions = {
@@ -97,18 +105,39 @@ class Game {
 
     update() {
         if (!this.isPaused) {
+            // Smooth camera movement towards target region
+            if (this.currentCrisis && !this.isMapView && this.targetCameraPosition) {
+                const stepAlpha = 0.05; // Smoothing factor for Lerp
+                this.camera.position.lerp(this.targetCameraPosition, stepAlpha);
+                this.camera.lookAt(0, 0, 0); // Keep looking at the center of the globe
+            }
+
             if (!this.isMapView) {
-                if (this.rotationProgress < 1 && this.currentCrisis) {
-                    this.rotationProgress += 0.01;
-                    this.camera.position.lerp(this.targetCameraPosition, this.rotationProgress);
-                    this.camera.lookAt(0, 0, 0);
-                }
-                this.controls.update();
-                this.tension += 0.01;
+                this.controls.update(); // Only update controls if not in map view and camera is not being programmatically moved
+                this.tension += 0.01; // Example: tension increases over time
                 if (this.currentCrisis && this.isRegionCentered(this.currentCrisis.region)) {
                     document.getElementById('zoom-in-button').style.display = 'block';
                 } else {
                     document.getElementById('zoom-in-button').style.display = 'none';
+                }
+            }
+
+            // Animate map plane opacity
+            if (this.isAnimatingMapOpacity) {
+                if (this.mapPlane.material.opacity < this.mapOpacityTarget) {
+                    this.mapPlane.material.opacity += this.mapPlaneFadeSpeed;
+                    if (this.mapPlane.material.opacity >= this.mapOpacityTarget) {
+                        this.mapPlane.material.opacity = this.mapOpacityTarget;
+                        this.isAnimatingMapOpacity = false;
+                    }
+                } else if (this.mapPlane.material.opacity > this.mapOpacityTarget) {
+                    this.mapPlane.material.opacity -= this.mapPlaneFadeSpeed;
+                    if (this.mapPlane.material.opacity <= this.mapOpacityTarget) {
+                        this.mapPlane.material.opacity = this.mapOpacityTarget;
+                        this.isAnimatingMapOpacity = false;
+                    }
+                } else {
+                     this.isAnimatingMapOpacity = false;
                 }
             }
             this.updateUI();
@@ -129,8 +158,8 @@ class Game {
 
     triggerEvent() {
         this.currentCrisis = this.events[Math.floor(Math.random() * this.events.length)];
-        this.rotationProgress = 0;
-        this.setCameraToRegion(this.currentCrisis.region);
+        // this.rotationProgress = 0; // Removed
+        this.setCameraToRegion(this.currentCrisis.region); // This sets this.targetCameraPosition
         this.highlightRegion(this.currentCrisis.region);
         const panel = document.getElementById('event-panel');
         document.getElementById('event-description').innerText = `${this.currentCrisis.description} Navigate to ${this.currentCrisis.region} on the globe.`;
@@ -153,19 +182,27 @@ class Game {
     }
 
     highlightRegion(regionName) {
+        // Remove previous highlight if it exists
+        if (this.currentHighlight) {
+            this.scene.remove(this.currentHighlight);
+            this.currentHighlight.geometry.dispose(); // Dispose geometry
+            this.currentHighlight.material.dispose(); // Dispose material
+            this.currentHighlight = null;
+        }
+
         const region = this.regions[regionName];
         const { lat, lon } = region;
         const phi = (90 - lat) * (Math.PI / 180);
         const theta = (lon + 180) * (Math.PI / 180);
-        const x = -5 * Math.sin(phi) * Math.cos(theta);
+        const x = -5 * Math.sin(phi) * Math.cos(theta); // Radius 5 to be on surface of globe
         const y = 5 * Math.cos(phi);
         const z = 5 * Math.sin(phi) * Math.sin(theta);
 
-        const highlightGeometry = new THREE.SphereGeometry(0.2, 16, 16);
-        const highlightMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const highlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
-        highlight.position.set(x, y, z);
-        this.scene.add(highlight);
+        const highlightGeometry = new THREE.SphereGeometry(0.2, 16, 16); // Size 0.2, 16x16 segments
+        const highlightMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.75 }); // Red, slightly transparent
+        this.currentHighlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
+        this.currentHighlight.position.set(x, y, z);
+        this.scene.add(this.currentHighlight);
     }
 
     isRegionCentered(regionName) {
@@ -195,7 +232,9 @@ class Game {
         this.camera.position.set(0, 0, 10);
         this.camera.lookAt(0, 0, 0);
         this.globe.visible = false;
-        this.mapPlane.material.opacity = 1;
+        // this.mapPlane.material.opacity = 1; // Replaced by animation
+        this.mapOpacityTarget = 1;
+        this.isAnimatingMapOpacity = true;
         document.getElementById('event-panel').style.display = 'none';
         document.getElementById('zoom-in-button').style.display = 'none';
         document.getElementById('zoom-out-button').style.display = 'block';
@@ -207,7 +246,9 @@ class Game {
         this.camera.position.set(0, 0, 10);
         this.camera.lookAt(0, 0, 0);
         this.globe.visible = true;
-        this.mapPlane.material.opacity = 0;
+        // this.mapPlane.material.opacity = 0; // Replaced by animation
+        this.mapOpacityTarget = 0;
+        this.isAnimatingMapOpacity = true;
         document.getElementById('zoom-out-button').style.display = 'none';
         if (this.currentCrisis) {
             document.getElementById('event-panel').style.display = 'block';
@@ -225,8 +266,16 @@ class Game {
         document.getElementById('zoom-in-button').style.display = 'none';
         this.isPaused = false;
         this.currentCrisis = null;
+        if (this.currentHighlight) { // Remove highlight when crisis is resolved
+            this.scene.remove(this.currentHighlight);
+            this.currentHighlight.geometry.dispose();
+            this.currentHighlight.material.dispose();
+            this.currentHighlight = null;
+        }
         this.globe.visible = true;
-        this.mapPlane.material.opacity = 0;
+        // this.mapPlane.material.opacity = 0; // Replaced by animation
+        this.mapOpacityTarget = 0; 
+        this.isAnimatingMapOpacity = true;
         this.isMapView = false;
         this.controls.enabled = true;
         this.updateUI();
@@ -253,10 +302,18 @@ class Game {
         this.influence = { USA: 0, USSR: 0 };
         this.isPaused = false;
         this.currentCrisis = null;
+        if (this.currentHighlight) { // Also remove highlight on game reset
+            this.scene.remove(this.currentHighlight);
+            this.currentHighlight.geometry.dispose();
+            this.currentHighlight.material.dispose();
+            this.currentHighlight = null;
+        }
         this.isMapView = false;
         this.controls.enabled = true;
         this.globe.visible = true;
-        this.mapPlane.material.opacity = 0;
+        // this.mapPlane.material.opacity = 0; // Replaced by animation
+        this.mapOpacityTarget = 0;
+        this.isAnimatingMapOpacity = true;
         document.getElementById('zoom-in-button').style.display = 'none';
         document.getElementById('zoom-out-button').style.display = 'none';
         this.updateUI();
