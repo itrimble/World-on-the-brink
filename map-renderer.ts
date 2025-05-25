@@ -1,629 +1,386 @@
-```typescript
-// src/renderer/components/map/MapRenderer.ts
 import * as THREE from 'three';
 import { Country } from '../../../shared/types/country';
 
-export interface CountryMesh {
-  id: string;
-  mesh: THREE.Mesh;
-  originalColor: THREE.Color;
-  isSelected: boolean;
-  isHovered: boolean;
-  bounds: {
-    minX: number;
-    maxX: number;
-    minY: number;
-    maxY: number;
-  };
-}
+// --- Module Imports ---
+// Note: The paths to these modules might need adjustment based on the actual project structure.
 
+// Geometry handling for map elements, including instanced rendering.
+import {
+  CountryInstanceInfo,
+  CountryInstanceMap,
+  createInstancedPlaceholderMap,
+  clearInstancedMap,
+  // initializePredefinedGeometries is called within map-geometry.ts itself.
+} from './map-geometry';
+
+// Interaction handling (mouse events, raycasting).
+import {
+  setupEventListeners,
+  handleMouseMove,
+  handleMouseClick,
+  handleMouseWheel,
+  handleMouseDown,
+  handleMouseUp,
+  updateRaycasterForInstancedMeshes,
+  MapInteractionData,
+  CleanupFunction as EventListenerCleanupFunction // Renamed for clarity
+} from './map-interaction';
+
+// State management for map properties (mode, zoom, pan, etc.) and color calculations.
+import {
+  MapState,
+  createInitialMapState,
+  setMapMode as setStateMapMode,
+  setCurrentColorData as setStateCurrentColorData,
+  setZoomLevel as setStateZoomLevel,
+  setIsDragging as setStateIsDragging,
+  setDragStart as setStateDragStart,
+  setTargetCenter as setStateTargetCenter,
+  setCurrentCenter as setStateCurrentCenter,
+  getCountryBaseColor,
+  clearColorCache,
+  MapMode
+} from './map-state';
+
+// Display logic, including scene setup, rendering, and visual updates for instances.
+import {
+  setupLighting,
+  updateCameraMovement,
+  updateCountryInstanceAppearance,
+  updateAllCountryInstanceAppearances,
+  renderScene,
+  handleWindowResize
+} from './map-display';
+
+/**
+ * Main class responsible for rendering the world map and handling user interactions.
+ * It integrates various modules for geometry, interaction, state, and display management
+ * to provide an interactive map experience using Three.js with instanced rendering for performance.
+ */
 export class MapRenderer {
+  // --- Three.js Core Components ---
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
   private raycaster: THREE.Raycaster;
+  /** Normalized mouse coordinates for raycasting. Initialized off-screen. */
   private mouse: THREE.Vector2;
-  private countryMeshes: Map<string, CountryMesh> = new Map();
-  private textureLoader: THREE.TextureLoader;
+
+  // --- Map Data & Instancing ---
+  /** 
+   * Stores information about each country's rendered instance, mapping country ID to `CountryInstanceInfo`.
+   * This is central to managing per-country state with instanced rendering.
+   */
+  private countryInstances: CountryInstanceMap = new Map();
+  /** Array to keep track of created `InstancedMesh` objects for efficient management and disposal. */
+  private instancedMeshes: THREE.InstancedMesh[] = [];
+  /** Parent `THREE.Group` for all map-related objects, facilitating transformations like panning. */
   private mapGroup: THREE.Group;
+  /** The HTML DOM element that hosts the Three.js canvas. */
   private container: HTMLElement;
+
+  // --- State & Callbacks ---
+  /** Flag to indicate if the renderer has been disposed, to prevent operations on a disposed instance. */
   private disposed: boolean = false;
-  
-  // Interaction callbacks
-  private onCountrySelect?: (countryId: string) => void;
-  private onCountryHover?: (countryId: string | null) => void;
-  
-  // Map state
-  private currentMapMode: 'political' | 'influence' | 'insurgency' | 'coup' | 'economy' = 'political';
-  private currentColorData: Record<string, number> = {};
-  private zoomLevel: number = 1;
-  private isDragging: boolean = false;
-  private dragStart = new THREE.Vector2();
-  private targetCenter = new THREE.Vector2(0, 0);
-  private currentCenter = new THREE.Vector2(0, 0);
-  
+  /** Callback invoked when a country is selected (e.g., by clicking). */
+  private onCountrySelectCallback?: (countryId: string) => void;
+  /** Callback invoked when the mouse hovers over a country (or `null` if hovering over no country). */
+  private onCountryHoverCallback?: (countryId: string | null) => void;
+  /** Holds the current state of the map (mode, zoom, pan, etc.), managed by functions from `map-state.ts`. */
+  private mapState: MapState;
+  /** 
+   * Data structure passed to interaction handlers, bundling necessary objects and callbacks.
+   * Marked with `!` for definite assignment in the constructor via `setupInteractionData`.
+   */
+  private interactionData!: MapInteractionData;
+  /** Function to clean up DOM event listeners, returned by `setupEventListeners`. */
+  private eventListenerCleanup?: EventListenerCleanupFunction;
+  /** 
+   * Stores the raw country data loaded via `loadMap`.
+   * Used for recalculating instance properties (like `originalColor`) when map mode changes.
+   */
+  private loadedCountriesData: Record<string, Country> = {};
+
+  /**
+   * Initializes the MapRenderer.
+   * Sets up the Three.js scene, camera, renderer, lighting, interaction handlers, and starts the animation loop.
+   * @param container - The HTML element where the map canvas will be appended.
+   */
   constructor(container: HTMLElement) {
     this.container = container;
-    
-    // Create scene
+    // `initializePredefinedGeometries()` is now self-invoked within `map-geometry.ts`.
+
+    this.mapState = createInitialMapState();
+
+    // Initialize Three.js scene and core components.
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x111827);
-    
-    // Create camera
+    this.scene.background = new THREE.Color(0x1a202c); // Darker, neutral background.
+
     const aspect = container.clientWidth / container.clientHeight;
-    this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
-    this.camera.position.z = 300;
-    
-    // Create renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    // Adjusted FOV and clipping planes for potentially larger scenes or different perspectives.
+    this.camera = new THREE.PerspectiveCamera(50, aspect, 10, 2000); 
+    this.camera.position.z = 350; // Initial camera distance from the map plane.
+
+    this.renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      powerPreference: 'high-performance' // Request high performance GPU if available.
+    });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
+    // For sharper visuals on high DPI screens, uncomment:
+    // this.renderer.setPixelRatio(window.devicePixelRatio); 
     container.appendChild(this.renderer.domElement);
-    
-    // Create raycaster for selection
+
     this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2();
-    
-    // Create texture loader
-    this.textureLoader = new THREE.TextureLoader();
-    
-    // Create map group
-    this.mapGroup = new THREE.Group();
+    // Initialize mouse vector far off-screen to prevent accidental initial hover/selection.
+    this.mouse = new THREE.Vector2(-1000, -1000); 
+
+    this.mapGroup = new THREE.Group(); // This group will hold all map instances.
     this.scene.add(this.mapGroup);
-    
-    // Add lighting
-    this.setupLighting();
-    
-    // Add event listeners
-    this.setupEventListeners();
-    
-    // Start animation loop
-    this.animate();
+
+    setupLighting(this.scene); // Configure scene lighting from `map-display.ts`.
+    this.setupInteractionData(); // Prepare the data object for interaction handlers.
+    this.setupDomEventListeners(); // Attach DOM event listeners.
+
+    this.animate(); // Start the rendering loop.
   }
-  
+
   /**
-   * Set up scene lighting
+   * Initializes `this.interactionData` which bundles all necessary context for interaction handlers.
+   * This method is called once during constructor setup.
+   * @private
    */
-  private setupLighting(): void {
-    // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    this.scene.add(ambientLight);
-    
-    // Add directional light
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(0, 1, 1);
-    this.scene.add(directionalLight);
+  private setupInteractionData(): void {
+    this.interactionData = {
+      camera: this.camera,
+      mouse: this.mouse,
+      raycaster: this.raycaster,
+      mapGroup: this.mapGroup,
+      countryInstances: this.countryInstances, // Uses the instanced map.
+      container: this.container,
+      // State properties that might be read by interaction handlers:
+      isDragging: this.mapState.isDragging,
+      dragStart: this.mapState.dragStart,
+      targetCenter: this.mapState.targetCenter,
+      zoomLevel: this.mapState.zoomLevel,
+      // Callbacks to notify external listeners:
+      onCountrySelect: (countryId) => {
+        if (this.onCountrySelectCallback) this.onCountrySelectCallback(countryId);
+      },
+      onCountryHover: (countryId) => {
+        if (this.onCountryHoverCallback) this.onCountryHoverCallback(countryId);
+      },
+      // Functions to update the main MapState from interaction handlers:
+      setIsDragging: (isDragging) => this.mapState = setStateIsDragging(this.mapState, isDragging),
+      setDragStart: (dragStart) => this.mapState = setStateDragStart(this.mapState, dragStart),
+      setTargetCenter: (targetCenter) => this.mapState = setStateTargetCenter(this.mapState, targetCenter),
+      // Callback for interaction module to request visual update of an instance:
+      updateCountryInstanceAppearance: (countryId) => updateCountryInstanceAppearance(countryId, this.countryInstances)
+    };
   }
   
   /**
-   * Set up event listeners
+   * Sets up DOM event listeners for map interactions by delegating to `map-interaction.ts`.
+   * Stores the returned cleanup function for later use in `dispose`.
+   * @private
    */
-  private setupEventListeners(): void {
-    // Mouse move for hover
-    this.container.addEventListener('mousemove', this.onMouseMove.bind(this));
-    
-    // Mouse click for selection
-    this.container.addEventListener('click', this.onMouseClick.bind(this));
-    
-    // Mouse wheel for zoom
-    this.container.addEventListener('wheel', this.onMouseWheel.bind(this));
-    
-    // Mouse drag for panning
-    this.container.addEventListener('mousedown', this.onMouseDown.bind(this));
-    document.addEventListener('mouseup', this.onMouseUp.bind(this));
-    document.addEventListener('mouseleave', this.onMouseUp.bind(this));
-    
-    // Window resize
-    window.addEventListener('resize', this.onWindowResize.bind(this));
+  private setupDomEventListeners(): void {
+    // Event handlers from `map-interaction.ts` are designed to be pure or operate on `interactionData`.
+    // Binding `this` is not necessary if they don't access `MapRenderer`'s `this` context.
+    const boundHandleMouseMove = (e: MouseEvent) => handleMouseMove(e, this.interactionData);
+    const boundHandleMouseClick = (e: MouseEvent) => handleMouseClick(e, this.interactionData);
+    const boundHandleMouseWheel = (e: WheelEvent) => {
+        handleMouseWheel(e, {
+            zoomLevel: this.mapState.zoomLevel,
+            // Provide a setter for zoom level that updates MapState.
+            setZoomLevel: (newZoomLevel) => this.mapState = setStateZoomLevel(this.mapState, newZoomLevel)
+        });
+        // Keep interactionData.zoomLevel in sync if it's used as a cache by other interaction functions.
+        this.interactionData.zoomLevel = this.mapState.zoomLevel;
+    };
+    const boundHandleMouseDown = (e: MouseEvent) => handleMouseDown(e, this.interactionData);
+    const boundHandleMouseUp = (e: MouseEvent) => handleMouseUp(e, this.interactionData);
+    const boundHandleWindowResize = () => handleWindowResize(this.container, this.camera, this.renderer);
+
+    this.eventListenerCleanup = setupEventListeners(
+      this.container,
+      this.interactionData, // Passed for context to handlers, though not directly used by setup.
+      boundHandleMouseMove,
+      boundHandleMouseClick,
+      boundHandleMouseWheel,
+      boundHandleMouseDown,
+      boundHandleMouseUp,
+      boundHandleWindowResize
+    );
   }
-  
+
   /**
-   * Animation loop
+   * The main animation loop. Called recursively using `requestAnimationFrame`.
+   * Updates interaction states, camera/map position, raycasting for hover effects, and renders the scene.
+   * @private
    */
   private animate(): void {
-    if (this.disposed) return;
-    
+    if (this.disposed) return; // Stop loop if renderer is disposed.
+
     requestAnimationFrame(this.animate.bind(this));
-    
-    // Smooth camera zooming and panning
-    this.updateCameraMovement();
-    
-    // Update raycaster
-    this.updateRaycaster();
-    
-    // Render scene
-    this.renderer.render(this.scene, this.camera);
+
+    // Synchronize interactionData with the current mapState before updates.
+    // This ensures that functions like `updateRaycasterForInstancedMeshes` have the latest state.
+    this.interactionData.isDragging = this.mapState.isDragging;
+    this.interactionData.dragStart = this.mapState.dragStart;
+    this.interactionData.targetCenter = this.mapState.targetCenter;
+    this.interactionData.zoomLevel = this.mapState.zoomLevel; 
+
+    // Update camera and map group positions for smooth panning and zooming.
+    const newCurrentCenter = updateCameraMovement(
+      this.mapGroup, this.camera,
+      this.mapState.currentCenter, this.mapState.targetCenter, this.mapState.zoomLevel
+    );
+    this.mapState = setStateCurrentCenter(this.mapState, newCurrentCenter);
+
+    // Perform raycasting to detect hovered country instances and update their appearance.
+    updateRaycasterForInstancedMeshes(this.interactionData);
+
+    // Render the scene.
+    renderScene(this.renderer, this.scene, this.camera);
   }
-  
+
   /**
-   * Update camera position and zoom
-   */
-  private updateCameraMovement(): void {
-    // Smooth transition between current and target center
-    this.currentCenter.lerp(this.targetCenter, 0.1);
-    
-    // Apply camera position
-    this.mapGroup.position.x = this.currentCenter.x;
-    this.mapGroup.position.y = this.currentCenter.y;
-    
-    // Apply zoom
-    this.camera.position.z = 300 / this.zoomLevel;
-  }
-  
-  /**
-   * Update raycaster and check for hover
-   */
-  private updateRaycaster(): void {
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    
-    // Find intersections
-    const intersects = this.raycaster.intersectObjects(this.mapGroup.children);
-    
-    // Check if we're hovering over a country
-    if (intersects.length > 0) {
-      const intersectedObject = intersects[0].object as THREE.Mesh;
-      
-      // Find the country that owns this mesh
-      let hoveredCountryId: string | null = null;
-      
-      for (const [countryId, countryMesh] of this.countryMeshes.entries()) {
-        if (countryMesh.mesh === intersectedObject) {
-          hoveredCountryId = countryId;
-          
-          // If not already hovered, set hovered state
-          if (!countryMesh.isHovered) {
-            countryMesh.isHovered = true;
-            this.updateCountryMeshMaterial(countryId);
-          }
-        } else if (countryMesh.isHovered) {
-          // Reset previously hovered country
-          countryMesh.isHovered = false;
-          this.updateCountryMeshMaterial(countryId);
-        }
-      }
-      
-      // Call hover callback if set
-      if (this.onCountryHover && hoveredCountryId) {
-        this.onCountryHover(hoveredCountryId);
-      }
-    } else {
-      // Reset all hover states if not hovering over any country
-      for (const [countryId, countryMesh] of this.countryMeshes.entries()) {
-        if (countryMesh.isHovered) {
-          countryMesh.isHovered = false;
-          this.updateCountryMeshMaterial(countryId);
-        }
-      }
-      
-      // Call hover callback with null
-      if (this.onCountryHover) {
-        this.onCountryHover(null);
-      }
-    }
-  }
-  
-  /**
-   * Load the world map
-   * @param countriesData Countries data to use for generating the map
+   * Loads map data, clears any existing map elements, and creates new instanced meshes for countries.
+   * @param countriesData - A record mapping country IDs to `Country` data objects.
    */
   public loadMap(countriesData: Record<string, Country>): void {
-    // Clear existing map
-    this.clearMap();
+    this.loadedCountriesData = countriesData; // Store for color recalculations on mode change.
     
-    // For now, create a simple placeholder with country shapes
-    // In a real implementation, this would load GeoJSON or other map data
-    this.createPlaceholderMap(countriesData);
+    // Clear previously rendered map elements (InstancedMeshes and instance data).
+    clearInstancedMap(this.mapGroup, this.countryInstances, this.instancedMeshes);
+
+    // Create new InstancedMeshes based on the provided country data and current map mode.
+    // `getCountryBaseColor` (with caching) is passed for initial color determination.
+    this.instancedMeshes = createInstancedPlaceholderMap(
+      countriesData,
+      this.mapGroup,
+      this.countryInstances,
+      getCountryBaseColor, 
+      this.mapState.currentMapMode
+    );
+    // Initial visual state (including colors) is set by `createInstancedPlaceholderMap`.
   }
   
   /**
-   * Clear the map
+   * Sets the current map display mode (e.g., political, economic).
+   * This triggers a recalculation of base colors for all country instances and updates their appearance.
+   * @param mode - The `MapMode` to activate.
    */
-  private clearMap(): void {
-    // Remove all countries from the map group
-    while (this.mapGroup.children.length > 0) {
-      const child = this.mapGroup.children[0];
-      this.mapGroup.remove(child);
-      
-      // Dispose geometry and material to prevent memory leaks
-      if (child instanceof THREE.Mesh) {
-        if (child.geometry) child.geometry.dispose();
-        if (child.material instanceof THREE.Material) {
-          child.material.dispose();
-        } else if (Array.isArray(child.material)) {
-          child.material.forEach(material => material.dispose());
-        }
+  public setMapMode(mode: MapMode): void {
+    if (this.mapState.currentMapMode === mode) return; // No change if mode is already active.
+
+    // Update mapState with the new mode. This also clears the color cache in `map-state.ts`.
+    this.mapState = setStateMapMode(this.mapState, mode); 
+
+    // Recalculate `originalColor` for each country instance based on the new map mode.
+    // `getCountryBaseColor` will use its cache or recompute colors as needed.
+    this.countryInstances.forEach((instanceInfo, countryId) => {
+      const country = this.loadedCountriesData[countryId];
+      if (country) {
+        instanceInfo.originalColor.setHex(getCountryBaseColor(country, this.mapState.currentMapMode));
       }
-    }
-    
-    // Clear country meshes map
-    this.countryMeshes.clear();
-  }
-  
-  /**
-   * Create a placeholder map for demonstration
-   * @param countriesData Countries data
-   */
-  private createPlaceholderMap(countriesData: Record<string, Country>): void {
-    // Create a grid of country placeholders
-    const countryIds = Object.keys(countriesData);
-    const gridSize = Math.ceil(Math.sqrt(countryIds.length));
-    const spacing = 40;
-    const startX = -spacing * (gridSize - 1) / 2;
-    const startY = spacing * (gridSize - 1) / 2;
-    
-    countryIds.forEach((countryId, index) => {
-      const row = Math.floor(index / gridSize);
-      const col = index % gridSize;
-      
-      const x = startX + col * spacing;
-      const y = startY - row * spacing;
-      
-      // Randomize the shape a bit to make it look more like a country
-      const countryGeometry = this.createRandomCountryShape();
-      
-      // Create base color based on political alignment (for 'political' mode)
-      const country = countriesData[countryId];
-      const colorValue = this.getCountryBaseColor(country);
-      const color = new THREE.Color(colorValue);
-      
-      // Create material
-      const material = new THREE.MeshStandardMaterial({
-        color: color,
-        flatShading: true
-      });
-      
-      // Create mesh
-      const mesh = new THREE.Mesh(countryGeometry, material);
-      mesh.position.set(x, y, 0);
-      
-      // Add to map group
-      this.mapGroup.add(mesh);
-      
-      // Add to country meshes map
-      this.countryMeshes.set(countryId, {
-        id: countryId,
-        mesh: mesh,
-        originalColor: color.clone(),
-        isSelected: false,
-        isHovered: false,
-        bounds: {
-          minX: x - 10,
-          maxX: x + 10,
-          minY: y - 10,
-          maxY: y + 10
-        }
-      });
     });
+    // Apply the new colors and any selection/hover effects to all instances.
+    updateAllCountryInstanceAppearances(this.countryInstances);
   }
-  
+
   /**
-   * Create a random country-like shape
-   */
-  private createRandomCountryShape(): THREE.BufferGeometry {
-    // Create a base shape
-    const shape = new THREE.Shape();
-    
-    // Number of points to use for the shape
-    const points = 6 + Math.floor(Math.random() * 5);
-    
-    // Generate random points around a circle
-    const radius = 10;
-    for (let i = 0; i < points; i++) {
-      const angle = (i / points) * Math.PI * 2;
-      const radiusVariation = radius * (0.7 + Math.random() * 0.6);
-      const x = Math.cos(angle) * radiusVariation;
-      const y = Math.sin(angle) * radiusVariation;
-      
-      if (i === 0) {
-        shape.moveTo(x, y);
-      } else {
-        shape.lineTo(x, y);
-      }
-    }
-    
-    shape.closePath();
-    
-    // Create geometry from shape
-    const geometry = new THREE.ShapeGeometry(shape);
-    
-    return geometry;
-  }
-  
-  /**
-   * Get base color for a country based on its data
-   */
-  private getCountryBaseColor(country: Country): number {
-    // Base color depends on map mode
-    switch (this.currentMapMode) {
-      case 'political':
-        // Base on government alignment
-        if (country.government.alignment === 'western') {
-          return 0x3b82f6; // Blue for western-aligned
-        } else if (country.government.alignment === 'eastern') {
-          return 0xef4444; // Red for eastern-aligned
-        } else if (country.government.alignment === 'neutral') {
-          return 0x10b981; // Green for neutral
-        } else {
-          return 0x8b5cf6; // Purple for non-aligned
-        }
-        
-      case 'influence':
-        // Base on diplomatic relations
-        const usaRelation = country.relations.usa;
-        const ussrRelation = country.relations.ussr;
-        
-        if (usaRelation > ussrRelation + 30) {
-          return 0x3b82f6; // Blue for USA influence
-        } else if (ussrRelation > usaRelation + 30) {
-          return 0xef4444; // Red for USSR influence
-        } else {
-          return 0xd97706; // Orange for contested
-        }
-        
-      case 'insurgency':
-        // Base on insurgency level
-        const insurgencyLevel = country.internal.insurgencyLevel;
-        
-        if (insurgencyLevel < 10) {
-          return 0x10b981; // Green for peaceful
-        } else if (insurgencyLevel < 30) {
-          return 0xf59e0b; // Yellow for unrest
-        } else if (insurgencyLevel < 60) {
-          return 0xd97706; // Orange for guerilla war
-        } else {
-          return 0xef4444; // Red for civil war
-        }
-        
-      case 'coup':
-        // Base on coup risk / government stability
-        const coupRisk = country.internal.coupRisk;
-        
-        if (coupRisk < 10) {
-          return 0x10b981; // Green for stable
-        } else if (coupRisk < 30) {
-          return 0xf59e0b; // Yellow for some risk
-        } else if (coupRisk < 60) {
-          return 0xd97706; // Orange for high risk
-        } else {
-          return 0xef4444; // Red for imminent coup
-        }
-        
-      case 'economy':
-        // Base on economic development
-        const development = country.economy.development;
-        
-        if (development === 'high') {
-          return 0x10b981; // Green for high development
-        } else if (development === 'medium') {
-          return 0xf59e0b; // Yellow for medium development
-        } else {
-          return 0xef4444; // Red for low development
-        }
-        
-      default:
-        return 0x888888; // Gray for unknown mode
-    }
-  }
-  
-  /**
-   * Update color data for all countries
-   * @param colorData New color data
+   * Updates arbitrary color data in the map state.
+   * The interpretation and application of this data depend on how `getCountryBaseColor`
+   * or other display logic might use `mapState.currentColorData`.
+   * Currently, this primarily updates the state; direct visual changes would require
+   * further logic (e.g., cache invalidation, color recalculation) if base colors are affected.
+   * @param colorData - A record mapping country IDs to numerical color values or data points.
    */
   public updateColorData(colorData: Record<string, number>): void {
-    this.currentColorData = colorData;
-    
-    // Update all country colors
-    this.updateAllCountryColors();
+    this.mapState = setStateCurrentColorData(this.mapState, colorData);
+    // If `currentColorData` is used by `getCountryBaseColor` for base colors,
+    // a full visual refresh (similar to `setMapMode`) would be needed here.
+    // Example:
+    // clearColorCache(); // Or a more targeted invalidation.
+    // this.countryInstances.forEach(...recalculate originalColor...);
+    // updateAllCountryInstanceAppearances(this.countryInstances);
+    // console.warn("MapRenderer.updateColorData: Review if this should trigger a visual refresh of base colors.");
   }
-  
+
   /**
-   * Update all country colors based on current mode and data
-   */
-  private updateAllCountryColors(): void {
-    for (const [countryId, countryMesh] of this.countryMeshes.entries()) {
-      this.updateCountryMeshMaterial(countryId);
-    }
-  }
-  
-  /**
-   * Update a specific country's material based on its state
-   */
-  private updateCountryMeshMaterial(countryId: string): void {
-    const countryMesh = this.countryMeshes.get(countryId);
-    if (!countryMesh) return;
-    
-    // Get the base color
-    let color = countryMesh.originalColor.clone();
-    
-    // Apply modifications based on state
-    if (countryMesh.isSelected) {
-      // Brighten the color for selected country
-      color.offsetHSL(0, 0, 0.2);
-    }
-    
-    if (countryMesh.isHovered) {
-      // Brighten and saturate for hover
-      color.offsetHSL(0, 0.2, 0.1);
-    }
-    
-    // Update the material
-    if (countryMesh.mesh.material instanceof THREE.Material) {
-      countryMesh.mesh.material.color = color;
-      
-      // Update opacity for selected countries
-      if (countryMesh.isSelected) {
-        countryMesh.mesh.material.opacity = 1.0;
-      } else {
-        countryMesh.mesh.material.opacity = 0.9;
-      }
-    }
-  }
-  
-  /**
-   * Set the current map mode
-   */
-  public setMapMode(mode: 'political' | 'influence' | 'insurgency' | 'coup' | 'economy'): void {
-    this.currentMapMode = mode;
-    
-    // Update all country colors
-    this.updateAllCountryColors();
-  }
-  
-  /**
-   * Set a country as selected
+   * Selects or deselects a country instance.
+   * Updates the `isSelected` state of the target country instance and triggers a visual update for it.
+   * @param countryId - The ID of the country to select, or `null` to deselect all.
    */
   public selectCountry(countryId: string | null): void {
-    // Reset all selections
-    this.countryMeshes.forEach((countryMesh, id) => {
-      if (countryMesh.isSelected) {
-        countryMesh.isSelected = false;
-        this.updateCountryMeshMaterial(id);
+    this.countryInstances.forEach((instance, id) => {
+      const isNowSelected = (id === countryId);
+      if (instance.isSelected !== isNowSelected) {
+        instance.isSelected = isNowSelected;
+        // `updateCountryInstanceAppearance` handles applying the correct color based on the new selected state.
+        updateCountryInstanceAppearance(id, this.countryInstances);
       }
     });
-    
-    // Select the new country
-    if (countryId) {
-      const countryMesh = this.countryMeshes.get(countryId);
-      if (countryMesh) {
-        countryMesh.isSelected = true;
-        this.updateCountryMeshMaterial(countryId);
-      }
-    }
   }
-  
+
   /**
-   * Set country selection callback
+   * Registers a callback function to be invoked when a country is selected.
+   * @param callback - The function to call with the selected country's ID.
    */
   public setOnCountrySelect(callback: (countryId: string) => void): void {
-    this.onCountrySelect = callback;
+    this.onCountrySelectCallback = callback;
   }
-  
+
   /**
-   * Set country hover callback
+   * Registers a callback function to be invoked when the mouse hovers over a country.
+   * @param callback - The function to call with the hovered country's ID, or `null` if no country is hovered.
    */
   public setOnCountryHover(callback: (countryId: string | null) => void): void {
-    this.onCountryHover = callback;
+    this.onCountryHoverCallback = callback;
   }
-  
+
   /**
-   * Handle mouse move event
-   */
-  private onMouseMove(event: MouseEvent): void {
-    // Calculate mouse position in normalized device coordinates (-1 to +1)
-    const rect = this.container.getBoundingClientRect();
-    this.mouse.x = ((event.clientX - rect.left) / this.container.clientWidth) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / this.container.clientHeight) * 2 + 1;
-    
-    // Handle dragging for map panning
-    if (this.isDragging) {
-      const dragX = this.mouse.x - this.dragStart.x;
-      const dragY = this.mouse.y - this.dragStart.y;
-      
-      // Scale drag amount by zoom level and camera distance
-      const dragScale = this.camera.position.z;
-      
-      // Update target center
-      this.targetCenter.x += dragX * dragScale;
-      this.targetCenter.y += dragY * dragScale;
-      
-      // Update drag start
-      this.dragStart.copy(this.mouse);
-    }
-  }
-  
-  /**
-   * Handle mouse click event
-   */
-  private onMouseClick(event: MouseEvent): void {
-    // Ignore if we were dragging
-    if (this.isDragging) return;
-    
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    
-    // Find intersections
-    const intersects = this.raycaster.intersectObjects(this.mapGroup.children);
-    
-    // Check if we clicked on a country
-    if (intersects.length > 0) {
-      const intersectedObject = intersects[0].object as THREE.Mesh;
-      
-      // Find the country that owns this mesh
-      for (const [countryId, countryMesh] of this.countryMeshes.entries()) {
-        if (countryMesh.mesh === intersectedObject) {
-          // Call selection callback if set
-          if (this.onCountrySelect) {
-            this.onCountrySelect(countryId);
-          }
-          
-          break;
-        }
-      }
-    }
-  }
-  
-  /**
-   * Handle mouse wheel event for zooming
-   */
-  private onMouseWheel(event: WheelEvent): void {
-    event.preventDefault();
-    
-    // Determine zoom direction
-    const zoomDelta = Math.sign(event.deltaY) * -0.1;
-    
-    // Apply zoom bounds
-    this.zoomLevel = Math.max(0.5, Math.min(4, this.zoomLevel + zoomDelta));
-  }
-  
-  /**
-   * Handle mouse down event for dragging
-   */
-  private onMouseDown(event: MouseEvent): void {
-    this.isDragging = true;
-    this.dragStart.copy(this.mouse);
-  }
-  
-  /**
-   * Handle mouse up event to end dragging
-   */
-  private onMouseUp(event: MouseEvent): void {
-    this.isDragging = false;
-  }
-  
-  /**
-   * Handle window resize
-   */
-  private onWindowResize(): void {
-    const width = this.container.clientWidth;
-    const height = this.container.clientHeight;
-    
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    
-    this.renderer.setSize(width, height);
-  }
-  
-  /**
-   * Dispose resources
+   * Cleans up all resources used by the MapRenderer.
+   * This includes removing event listeners, disposing of Three.js objects (geometries, materials, renderer),
+   * and clearing caches. Should be called when the map is no longer needed to prevent memory leaks.
    */
   public dispose(): void {
+    if (this.disposed) return;
     this.disposed = true;
+
+    // Remove DOM event listeners.
+    if (this.eventListenerCleanup) {
+      this.eventListenerCleanup();
+    }
+
+    // Clear map data and dispose Three.js instanced meshes.
+    clearInstancedMap(this.mapGroup, this.countryInstances, this.instancedMeshes);
     
-    // Remove event listeners
-    this.container.removeEventListener('mousemove', this.onMouseMove.bind(this));
-    this.container.removeEventListener('click', this.onMouseClick.bind(this));
-    this.container.removeEventListener('wheel', this.onMouseWheel.bind(this));
-    this.container.removeEventListener('mousedown', this.onMouseDown.bind(this));
-    document.removeEventListener('mouseup', this.onMouseUp.bind(this));
-    document.removeEventListener('mouseleave', this.onMouseUp.bind(this));
-    window.removeEventListener('resize', this.onWindowResize.bind(this));
-    
-    // Dispose resources
-    this.clearMap();
-    this.renderer.dispose();
-    
-    // Remove from DOM
-    if (this.container.contains(this.renderer.domElement)) {
+    // Traverse the scene to dispose of any other materials and geometries.
+    // Note: Predefined geometries and shared materials from `map-geometry.ts` are not disposed here
+    // as they might be considered global. If their lifecycle is tied to MapRenderer, dispose them.
+    this.scene.traverse(object => {
+        if (object instanceof THREE.Mesh || object instanceof THREE.InstancedMesh) {
+            if ((object as THREE.Mesh).geometry) {
+              (object as THREE.Mesh).geometry.dispose();
+            }
+            // Materials on InstancedMesh are shared; handle their disposal carefully (e.g., once, if appropriate).
+            // If multiple MapRenderers could exist, shared materials need careful lifecycle management.
+        }
+    });
+    // Example if instancedCountryMaterial from map-geometry.ts was to be disposed here:
+    // instancedCountryMaterial.dispose(); 
+
+    this.renderer.dispose(); // Dispose of the WebGL renderer.
+
+    // Remove the canvas from the DOM.
+    if (this.container && this.container.contains(this.renderer.domElement)) {
       this.container.removeChild(this.renderer.domElement);
     }
+    
+    clearColorCache(); // Clear any cached colors from map-state.
+    // console.log("MapRenderer disposed."); // For debugging
   }
 }
 ```
