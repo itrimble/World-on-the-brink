@@ -1,5 +1,7 @@
 import React, { ReactNode, useEffect, useRef } from 'react';
 
+
+
 /**
  * Props for the Modal component.
  */
@@ -28,8 +30,11 @@ export interface ModalProps {
  * It includes features like a title bar, a close button, content area, and an optional footer.
  * The modal's visibility is controlled by the `isOpen` prop.
  * Pressing the Escape key will also trigger the `onClose` callback.
+ comprehensive-refactor
  * Implements focus trapping for accessibility: when the modal is open, tab navigation is restricted
  * to elements within the modal. Focus is returned to the previously focused element when closed.
+
+ main
  */
 const Modal: React.FC<ModalProps> = ({
   title,
@@ -40,10 +45,14 @@ const Modal: React.FC<ModalProps> = ({
   className = '',
   maxWidth = 'max-w-md', // Default max width
 }) => {
+ comprehensive-refactor
   const modalPanelRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
 
   // Effect for Escape key handling and focus management when modal opens/closes.
+
+  // Effect to handle Escape key press for closing the modal.
+ main
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -53,6 +62,7 @@ const Modal: React.FC<ModalProps> = ({
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscKey);
+ comprehensive-refactor
       // Store the currently focused element when modal opens
       previouslyFocusedElementRef.current = document.activeElement as HTMLElement;
       // Move focus to the modal panel (or first focusable element)
@@ -118,10 +128,22 @@ const Modal: React.FC<ModalProps> = ({
   }, [isOpen]);
 
 
+
+    }
+
+    // Cleanup function to remove the event listener when the modal is closed or the component unmounts.
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onClose]); // Dependencies for the effect
+
+  // Do not render the modal if it's not open.
+ main
   if (!isOpen) {
     return null;
   }
 
+ comprehensive-refactor
   const overlayStyles = "fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4";
   const panelBaseStyles = `bg-gray-800 text-white rounded-lg shadow-xl w-full overflow-hidden flex flex-col`;
   const panelLayoutAndSpacing = `p-5 sm:p-6`;
@@ -141,6 +163,23 @@ const Modal: React.FC<ModalProps> = ({
         className={combinedPanelClassName} 
         tabIndex={-1} // Allows the panel itself to be programmatically focused
       >
+
+  // Base styles for the modal overlay (the backdrop).
+  const overlayStyles = "fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4";
+  
+  // Base styles for the modal panel itself.
+  // Includes responsive width, max height with scroll, and styling.
+  const panelBaseStyles = `bg-gray-800 text-white rounded-lg shadow-xl w-full overflow-hidden flex flex-col`;
+  const panelLayoutAndSpacing = `p-5 sm:p-6`; // Padding for content
+
+  // Combine base styles with user-provided className and maxWidth.
+  const combinedPanelClassName = `${panelBaseStyles} ${maxWidth} ${className}`.trim();
+
+  return (
+    <div className={overlayStyles} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      {/* Modal Panel */}
+      <div className={combinedPanelClassName}>
+ main
         {/* Modal Header */}
         <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-700">
           <h2 id="modal-title" className="text-xl font-semibold text-gray-100">
@@ -149,13 +188,21 @@ const Modal: React.FC<ModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors text-2xl p-1 -mr-2 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+ comprehensive-refactor
             aria-label="Close modal" // Existing aria-label is good
+
+            aria-label="Close modal"
+ main
           >
             &times;
           </button>
         </div>
 
         {/* Modal Body (Content) */}
+ comprehensive-refactor
+
+        {/* Apply max-h for scrollability if content is too long */}
+ main
         <div className={`mb-5 overflow-y-auto max-h-[calc(100vh-15rem)] custom-scrollbar ${panelLayoutAndSpacing}`}>
           {children}
         </div>

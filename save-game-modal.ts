@@ -325,17 +325,27 @@ export const SaveGameModal: React.FC<SaveGameModalProps> = ({
                       className={`
                         p-3 border-b border-gray-500 cursor-pointer group
                         transition-colors duration-150 ease-in-out
+ comprehensive-refactor
                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-600  // Focus styles
+
+ main
                         ${selectedFileToOverwrite === save.fileName ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'hover:bg-gray-650 bg-gray-750 text-gray-300'}
                       `}
                       onClick={() => handleSelectExistingSaveEntry(save.fileName, save.saveName)}
                       role="button"
                       tabIndex={0}
+ comprehensive-refactor
                       onKeyPress={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelectExistingSaveEntry(save.fileName, save.saveName); }}
                       aria-label={`Select to overwrite saved game: ${save.saveName}`} // ARIA label
                       title={`Select to overwrite: ${save.saveName}`} // Tooltip
                     >
                       <div className="font-medium truncate" title={save.saveName}>{save.saveName}</div> {/* title attribute for tooltip on truncate */}
+
+                      onKeyPress={(e) => e.key === 'Enter' && handleSelectExistingSaveEntry(save.fileName, save.saveName)}
+                      title={`Select to overwrite: ${save.saveName}`}
+                    >
+                      <div className="font-medium truncate">{save.saveName}</div>
+ main
                       <div className="text-xs text-gray-400 group-hover:text-gray-300">{save.formattedTimestamp}</div>
                     </div>
                   ))}

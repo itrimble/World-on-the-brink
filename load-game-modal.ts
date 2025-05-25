@@ -299,6 +299,7 @@ export const LoadGameModal: React.FC<LoadGameModalProps> = ({
                   className={`
                     p-3 border-b border-gray-600 cursor-pointer group
                     transition-colors duration-150 ease-in-out
+ comprehensive-refactor
                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-600  // Focus styles
                     ${selectedSaveFileName === save.fileName ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'hover:bg-gray-650 bg-gray-750 text-gray-300'}
                   `}
@@ -310,6 +311,17 @@ export const LoadGameModal: React.FC<LoadGameModalProps> = ({
                 >
                   <div className="flex justify-between items-center">
                     <span className="font-medium truncate" title={save.saveName}>{save.saveName}</span> {/* title attribute for tooltip on truncate */}
+
+                    ${selectedSaveFileName === save.fileName ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'hover:bg-gray-650 bg-gray-750 text-gray-300'}
+                  `}
+                  onClick={() => handleSelectSaveEntry(save.fileName)}
+                  role="button" // Accessibility
+                  tabIndex={0} // Make it focusable
+                  onKeyPress={(e) => e.key === 'Enter' && handleSelectSaveEntry(save.fileName)} // Keyboard navigable
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium truncate" title={save.saveName}>{save.saveName}</span>
+ main
                     <Button
                       variant="danger"
                       size="sm"
