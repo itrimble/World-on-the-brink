@@ -206,5 +206,20 @@ export const {
   processWorldTurn,
 } = worldSlice.actions;
 
+// Selectors
+export const selectCountries = (state: { world: WorldState }) => state.world.countries;
+export const selectTensionLevel = (state: { world: WorldState }) => state.world.tensionLevel;
+export const selectClimateStability = (state: { world: WorldState }) => state.world.climateStabilityIndex;
+export const selectCurrentCrises = (state: { world: WorldState }) => state.world.currentCrises;
+export const selectHistoricalEvents = (state: { world: WorldState }) => state.world.historicalEvents;
+export const selectWorldIsLoading = (state: { world: WorldState }) => state.world.loading;
+export const selectWorldError = (state: { world: WorldState }) => state.world.error;
+
+// Selector to get a specific country by its ID
+export const selectCountryById = (state: RootState, countryId: string | null): Country | null => {
+  if (!countryId) return null;
+  return state.world.countries[countryId] || null;
+};
+
 export default worldSlice.reducer;
 ```

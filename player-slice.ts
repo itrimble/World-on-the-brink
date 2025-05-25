@@ -101,5 +101,15 @@ export const {
   prepareNextTurn,
 } = playerSlice.actions;
 
+// Selectors
+export const selectPlayerFaction = (state: { player: PlayerState }) => state.player.faction;
+export const selectPoliticalCapital = (state: { player: PlayerState }) => state.player.politicalCapital;
+export const selectPrestige = (state: { player: PlayerState }) => state.player.prestige;
+export const selectMilitaryReserves = (state: { player: PlayerState }) => state.player.militaryReserves;
+export const selectEconomicReserves = (state: { player: PlayerState }) => state.player.economicReserves;
+export const selectDefcon = (state: { player: PlayerState }) => state.player.defcon;
+export const selectActivePolicies = (state: { player: PlayerState }) => state.player.activePolicies;
+export const selectDiplomaticInfluence = (state: { player: PlayerState }) => state.player.diplomaticInfluence;
+
 export default playerSlice.reducer;
 ```

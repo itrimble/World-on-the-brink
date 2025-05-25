@@ -1,4 +1,6 @@
-import React, { ReactNode, useEffect } from 'react';
+import React, { ReactNode, useEffect, useRef } from 'react';
+
+
 
 /**
  * Props for the Modal component.
@@ -28,6 +30,11 @@ export interface ModalProps {
  * It includes features like a title bar, a close button, content area, and an optional footer.
  * The modal's visibility is controlled by the `isOpen` prop.
  * Pressing the Escape key will also trigger the `onClose` callback.
+ comprehensive-refactor
+ * Implements focus trapping for accessibility: when the modal is open, tab navigation is restricted
+ * to elements within the modal. Focus is returned to the previously focused element when closed.
+
+ main
  */
 const Modal: React.FC<ModalProps> = ({
   title,
@@ -38,7 +45,14 @@ const Modal: React.FC<ModalProps> = ({
   className = '',
   maxWidth = 'max-w-md', // Default max width
 }) => {
+ comprehensive-refactor
+  const modalPanelRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  // Effect for Escape key handling and focus management when modal opens/closes.
+
   // Effect to handle Escape key press for closing the modal.
+ main
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -48,6 +62,73 @@ const Modal: React.FC<ModalProps> = ({
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscKey);
+ comprehensive-refactor
+      // Store the currently focused element when modal opens
+      previouslyFocusedElementRef.current = document.activeElement as HTMLElement;
+      // Move focus to the modal panel (or first focusable element)
+      // Adding a slight delay can help ensure the modal is fully rendered.
+      requestAnimationFrame(() => {
+        modalPanelRef.current?.focus(); 
+      });
+    } else {
+      // When modal closes, return focus to the previously focused element
+      previouslyFocusedElementRef.current?.focus();
+    }
+
+    // Cleanup function
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onClose]);
+
+  // Effect for focus trapping within the modal.
+  useEffect(() => {
+    if (!isOpen || !modalPanelRef.current) return;
+
+    const panel = modalPanelRef.current;
+    // Query for all focusable elements within the modal panel.
+    // This selector can be adjusted based on what elements are considered focusable.
+    const focusableElements = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null); // Filter out disabled or hidden elements
+
+    if (focusableElements.length === 0) return; // No focusable elements found
+
+    const firstFocusableElement = focusableElements[0];
+    const lastFocusableElement = focusableElements[focusableElements.length - 1];
+    
+    // Set initial focus to the first focusable element if panel itself isn't focused or if preferred.
+    // The previous effect already focuses modalPanelRef.current, which is good if it has tabindex="-1".
+    // If you want to focus the first interactive element directly:
+    // requestAnimationFrame(() => firstFocusableElement.focus());
+
+
+    const handleTabKeyPress = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        if (event.shiftKey) { // Shift + Tab
+          if (document.activeElement === firstFocusableElement) {
+            lastFocusableElement.focus();
+            event.preventDefault();
+          }
+        } else { // Tab
+          if (document.activeElement === lastFocusableElement) {
+            firstFocusableElement.focus();
+            event.preventDefault();
+          }
+        }
+      }
+    };
+
+    panel.addEventListener('keydown', handleTabKeyPress);
+    return () => {
+      panel.removeEventListener('keydown', handleTabKeyPress);
+    };
+  }, [isOpen]);
+
+
+
     }
 
     // Cleanup function to remove the event listener when the modal is closed or the component unmounts.
@@ -57,9 +138,31 @@ const Modal: React.FC<ModalProps> = ({
   }, [isOpen, onClose]); // Dependencies for the effect
 
   // Do not render the modal if it's not open.
+ main
   if (!isOpen) {
     return null;
   }
+
+ comprehensive-refactor
+  const overlayStyles = "fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4";
+  const panelBaseStyles = `bg-gray-800 text-white rounded-lg shadow-xl w-full overflow-hidden flex flex-col`;
+  const panelLayoutAndSpacing = `p-5 sm:p-6`;
+  const combinedPanelClassName = `${panelBaseStyles} ${maxWidth} ${className}`.trim();
+
+  return (
+    <div 
+      className={overlayStyles} 
+      role="dialog" 
+      aria-modal="true" 
+      aria-labelledby="modal-title"
+      // onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} // Optional: close on overlay click
+    >
+      {/* Modal Panel: Make it focusable for initial focus setting */}
+      <div 
+        ref={modalPanelRef} 
+        className={combinedPanelClassName} 
+        tabIndex={-1} // Allows the panel itself to be programmatically focused
+      >
 
   // Base styles for the modal overlay (the backdrop).
   const overlayStyles = "fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4";
@@ -76,6 +179,7 @@ const Modal: React.FC<ModalProps> = ({
     <div className={overlayStyles} role="dialog" aria-modal="true" aria-labelledby="modal-title">
       {/* Modal Panel */}
       <div className={combinedPanelClassName}>
+ main
         {/* Modal Header */}
         <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-700">
           <h2 id="modal-title" className="text-xl font-semibold text-gray-100">
@@ -84,14 +188,21 @@ const Modal: React.FC<ModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors text-2xl p-1 -mr-2 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+ comprehensive-refactor
+            aria-label="Close modal" // Existing aria-label is good
+
             aria-label="Close modal"
+ main
           >
             &times;
           </button>
         </div>
 
         {/* Modal Body (Content) */}
+ comprehensive-refactor
+
         {/* Apply max-h for scrollability if content is too long */}
+ main
         <div className={`mb-5 overflow-y-auto max-h-[calc(100vh-15rem)] custom-scrollbar ${panelLayoutAndSpacing}`}>
           {children}
         </div>
