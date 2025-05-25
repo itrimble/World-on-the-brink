@@ -3,41 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>World on the Brink v0.4</title>
+    <title>World on the Brink</title> <!-- Updated title slightly -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="top-bar">
-        <div id="resources">
-            <div>Political Capital: <span id="capital">100</span></div>
-            <div>Tension: <span id="tension">0</span></div>
-            <div>USA Influence: <span id="usa-influence">0</span></div>
-            <div>USSR Influence: <span id="ussr-influence">0</span></div>
-        </div>
-        <!-- If a visual tension meter bar is needed, it would be placed here -->
+    <!-- Root element for the React application -->
+    <div id="root">
+        <!-- React will render the application shell here -->
     </div>
-    <div id="hamburger">☰</div>
-    <div id="menu">
-        <button onclick="console.log('Settings button clicked - feature coming soon')">Settings</button>
-        <button onclick="console.log('Help button clicked - feature coming soon')">Help</button>
-        <button onclick="console.log('Event Log button clicked - feature coming soon')">Event Log</button>
-    </div>
-    <div id="event-panel">
-        <p id="event-description"></p>
-        <button id="choice1">Choice 1</button>
-        <button id="choice2">Choice 2</button>
-        <button id="choice3">Choice 3</button>
-    </div>
-    <button id="zoom-in-button">Zoom In</button>
-    <button id="zoom-out-button">Zoom Out</button>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="game.js"></script>
-    <script>
-        document.getElementById('hamburger').addEventListener('click', () => {
-            const menu = document.getElementById('menu');
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        });
-    </script>
+    <!-- Main application script bundle will be injected here by the build process (e.g., Webpack, Vite) -->
+    <!-- For now, assuming an entry point like src/index.tsx or src/main.tsx will handle React rendering -->
+    <!-- No direct script includes for Three.js or game logic here anymore -->
 </body>
 </html>
+```
