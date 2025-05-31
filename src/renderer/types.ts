@@ -1,5 +1,4 @@
 // src/renderer/types.ts
-
 /**
  * Defines the structure for a country's economic data.
  */
@@ -11,7 +10,6 @@ export interface CountryEconomy {
   /** Level of economic development. */
   development: 'high' | 'medium' | 'low' | 'emerging' | 'underdeveloped'; // Expanded options
 }
-
 /**
  * Defines the structure for a country's governmental information.
  */
@@ -23,7 +21,6 @@ export interface CountryGovernment {
   /** Geopolitical alignment of the country. */
   alignment: 'western' | 'eastern' | 'neutral' | 'other' | 'non-aligned'; // Expanded options
 }
-
 /**
  * Defines the structure for a country's internal affairs.
  */
@@ -33,7 +30,6 @@ export interface CountryInternalAffairs {
   /** Risk of a coup d'état (e.g., 0-100). */
   coupRisk: number;
 }
-
 /**
  * Defines the structure for a country's military information.
  */
@@ -45,7 +41,6 @@ export interface CountryMilitary {
   /** Status regarding nuclear capabilities. */
   nuclearStatus?: 'none' | 'developing' | 'arsenal' | 'suspected'; // Expanded options
 }
-
 /**
  * Represents a country in the game world.
  * This type should align with the data structure used in `worldSlice.ts`
@@ -58,7 +53,6 @@ export interface Country {
   name: string;
   /** Short country code (e.g., "US", "SU"). Optional. */
   code?: string;
-  
   /** Information about the country's government. */
   government: CountryGovernment;
   /** Information about the country's economy. */
@@ -74,6 +68,5 @@ export interface Country {
    */
   relations: Record<string, number>; 
 }
-
 // Placeholder for other shared types if needed by components.
 ```
