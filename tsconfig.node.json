@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler", // Or "node" if preferred for Node context
+    "allowSyntheticDefaultImports": true,
+    "strict": true, // Optional: can be less strict for build scripts if needed
+    "types": ["node"] // Specify types for Node.js environment
+  },
+  "include": ["vite.config.ts", "*.js", "*.cjs", "*.mjs", "*.ts"] // Include config files and other Node scripts
+}

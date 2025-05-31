@@ -4,7 +4,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Policy } from '../../shared/types/policy';
 
 interface PlayerState {
-  faction: 'usa' | 'ussr';
+  faction: string;
   politicalCapital: number;
   prestige: number;
   militaryReserves: number;
@@ -30,7 +30,7 @@ const playerSlice = createSlice({
   initialState,
   reducers: {
     // Set player faction
-    setFaction: (state, action: PayloadAction<'usa' | 'ussr'>) => {
+    setFaction: (state, action: PayloadAction<string>) => {
       state.faction = action.payload;
     },
     
@@ -71,7 +71,7 @@ const playerSlice = createSlice({
     },
     
     // Reset player state (for new game)
-    resetPlayer: (state, action: PayloadAction<{ faction: 'usa' | 'ussr' }>) => {
+    resetPlayer: (state, action: PayloadAction<{ faction: string }>) => {
       return {
         ...initialState,
         faction: action.payload.faction,
