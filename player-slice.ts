@@ -1,7 +1,7 @@
 ```typescript
 // src/renderer/features/player/playerSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Policy } from '../../shared/types/policy';
+import { Policy } from 'src/renderer/types';
 
 interface PlayerState {
   faction: string;
