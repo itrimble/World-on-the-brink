@@ -1,30 +1,40 @@
 import * as THREE from 'three';
 import { CountryMeshMap, CountryMeshData } from './map-geometry';
-import { updateCountryMeshAppearance } from './map-display'; // Assuming this is the correct path and function name
+// updateCountryMeshAppearance is used via a callback, so direct import isn't strictly necessary here,
+// but good for type checking if the callback signature is complex.
 
-// Default colors for interaction states
-const HOVER_COLOR = new THREE.Color(0xFFFF00); // Yellow for hover
-const SELECTED_COLOR = new THREE.Color(0x00FF00); // Green for selected
+// These constants are for reference if map-display.ts doesn't export them or if specific
+// interaction-related colors are needed here. For now, map-display handles actual color application.
+// const HOVER_COLOR = new THREE.Color(0xFFFF00);
+// const SELECTED_COLOR = new THREE.Color(0x00FF00);
 
 export interface MapInteractionData {
   countryMeshes: CountryMeshMap;
   onCountrySelect: (countryId: string | null) => void;
-  // Callback to update visual appearance, matches signature from map-display.ts
-  updateCountryAppearanceCallback: (
+  updateCountryAppearanceCallback: ( // Signature matches map-display.ts
     countryData: CountryMeshData,
-    targetColor: THREE.Color,
+    baseColor: THREE.Color,
     isSelected: boolean,
-    highlightColor?: THREE.Color
+    isHovered: boolean
   ) => void;
   selectedCountryId: string | null;
-  hoveredCountryId: string | null;
+  hoveredCountryId: string | null; // This will be updated by updateRaycasterForCountryMeshes
   camera: THREE.Camera;
-  scene: THREE.Scene; // Or a specific group containing only country meshes
+  scene: THREE.Scene; // Should be the group containing country meshes for raycasting
+  zoomLevel?: number;
+
+  // Panning related state, managed by MapRenderer via these callbacks
+  isDragging: boolean;
+  dragStart: THREE.Vector2;
+  setIsDragging: (isDragging: boolean) => void;
+  setDragStart: (dragStart: THREE.Vector2) => void;
+  onPan: (deltaX: number, deltaY: number) => void;
 }
+
+const DRAG_SENSITIVITY_FACTOR = 0.05; // Adjusted for potentially more sensitive panning
 
 /**
  * Finds the country ID and data associated with a given THREE.Object3D (Mesh).
- * It traverses up the object's parents to find the country group.
  */
 function findCountryDataFromIntersect(
   object: THREE.Object3D,
@@ -45,16 +55,12 @@ function findCountryDataFromIntersect(
  */
 export function handleMouseClick(
   event: MouseEvent,
-  raycaster: THREE.Raycaster,
+  raycaster: THREE.Raycaster, // Assumed to be already updated with mouse coordinates
   data: MapInteractionData
 ): void {
-  const mouse = new THREE.Vector2(
-    (event.clientX / window.innerWidth) * 2 - 1,
-    -(event.clientY / window.innerHeight) * 2 + 1
-  );
-  raycaster.setFromCamera(mouse, data.camera);
-
-  const intersects = raycaster.intersectObjects(data.scene.children, true); // true for recursive
+  // Note: Raycaster should be updated with current mouse coordinates before calling this function.
+  // MapRenderer's onClick should do this.
+  const intersects = raycaster.intersectObjects(data.scene.children, true);
 
   if (intersects.length > 0) {
     const firstIntersect = intersects[0].object;
@@ -63,82 +69,85 @@ export function handleMouseClick(
     if (foundCountry) {
       data.onCountrySelect(foundCountry.countryId);
     } else {
-      data.onCountrySelect(null); // Clicked on something, but not a recognized country
+      data.onCountrySelect(null);
     }
   } else {
-    data.onCountrySelect(null); // Clicked outside any object
+    data.onCountrySelect(null);
   }
 }
 
 /**
- * Updates raycaster interactions for country meshes, handling hover effects.
+ * Handles mouse move events for hover effects and dragging.
+ */
+export function handleMouseMove(
+    event: MouseEvent,
+    raycaster: THREE.Raycaster, // Assumed to be already updated with mouse coordinates
+    data: MapInteractionData
+  ): void {
+
+    if (data.isDragging) {
+      const currentMouse = new THREE.Vector2(event.clientX, event.clientY);
+      const deltaX = currentMouse.x - data.dragStart.x;
+      const deltaY = currentMouse.y - data.dragStart.y;
+
+      const zoomFactor = data.zoomLevel ? Math.max(0.1, data.zoomLevel) : 1.0;
+      // Panning speed should decrease as zoom increases (camera is closer)
+      // A smaller dragScale means more mouse movement is needed for the same pan distance.
+      const dragScale = (DRAG_SENSITIVITY_FACTOR * 50) / (data.camera.position.z * zoomFactor) ;
+
+
+      const scaledDeltaX = deltaX * dragScale;
+      // Invert deltaY because screen Y is typically top-to-bottom, Three.js Y is bottom-to-top for map panning
+      const scaledDeltaY = -deltaY * dragScale;
+
+      data.onPan(scaledDeltaX, scaledDeltaY);
+      data.setDragStart(currentMouse);
+    } else {
+      // Raycaster is assumed to be updated in MapRenderer's onMouseMove
+      updateRaycasterForCountryMeshes(raycaster, data);
+    }
+  }
+
+/**
+ * Updates hover effects based on raycaster intersections.
  */
 export function updateRaycasterForCountryMeshes(
-  raycaster: THREE.Raycaster,
-  data: MapInteractionData
-): void {
-  raycaster.setFromCamera( // Assuming mouse coordinates are updated elsewhere or this is called in a mousemove handler
-    new THREE.Vector2( /* current mouse.x */ 0, /* current mouse.y */ 0 ), // Placeholder for actual mouse coords
-    data.camera
-  );
+    raycaster: THREE.Raycaster, // Raycaster should be already set with camera and mouse
+    data: MapInteractionData
+  ): void {
+    const intersects = raycaster.intersectObjects(data.scene.children, true);
+    let newHoveredCountryId: string | null = null;
 
-  const intersects = raycaster.intersectObjects(data.scene.children, true);
-  let newHoveredCountryId: string | null = null;
-
-  if (intersects.length > 0) {
-    const firstIntersect = intersects[0].object;
-    const foundCountry = findCountryDataFromIntersect(firstIntersect, data.countryMeshes);
-    if (foundCountry) {
-      newHoveredCountryId = foundCountry.countryId;
-    }
-  }
-
-  // Manage hover state changes
-  if (data.hoveredCountryId !== newHoveredCountryId) {
-    // Reset previously hovered country
-    if (data.hoveredCountryId) {
-      const oldHoverData = data.countryMeshes.get(data.hoveredCountryId);
-      if (oldHoverData) {
-        oldHoverData.isHovered = false;
-        const colorToApply = data.selectedCountryId === data.hoveredCountryId
-          ? SELECTED_COLOR
-          : oldHoverData.originalColor;
-        data.updateCountryAppearanceCallback(oldHoverData, colorToApply, data.selectedCountryId === data.hoveredCountryId, HOVER_COLOR);
+    if (intersects.length > 0) {
+      const firstIntersect = intersects[0].object;
+      const foundCountry = findCountryDataFromIntersect(firstIntersect, data.countryMeshes);
+      if (foundCountry) {
+        newHoveredCountryId = foundCountry.countryId;
       }
     }
 
-    // Highlight new hovered country
-    if (newHoveredCountryId) {
-      const newHoverData = data.countryMeshes.get(newHoveredCountryId);
-      if (newHoverData) {
-        newHoverData.isHovered = true;
-        // Apply hover color, but respect selected state if it's also selected
-        const colorToApply = data.selectedCountryId === newHoveredCountryId
-          ? SELECTED_COLOR // Or a combined selected+hover color
-          : HOVER_COLOR;
-        data.updateCountryAppearanceCallback(newHoverData, newHoverData.originalColor, data.selectedCountryId === newHoveredCountryId, HOVER_COLOR);
-        // Simpler: just apply hover color if not selected
-        // if (data.selectedCountryId !== newHoveredCountryId) {
-        //   data.updateCountryAppearanceCallback(newHoverData, HOVER_COLOR, false, HOVER_COLOR);
-        // }
+    if (data.hoveredCountryId !== newHoveredCountryId) {
+      // Reset previously hovered country
+      if (data.hoveredCountryId) {
+        const oldHoverData = data.countryMeshes.get(data.hoveredCountryId);
+        if (oldHoverData) {
+          // oldHoverData.isHovered = false; // State managed by MapRenderer via setHoveredCountry
+          const isSelected = data.selectedCountryId === data.hoveredCountryId;
+          data.updateCountryAppearanceCallback(oldHoverData, oldHoverData.originalColor, isSelected, false);
+        }
       }
-    }
-    data.hoveredCountryId = newHoveredCountryId;
-  }
-}
 
-// Note: Mouse coordinate updates for updateRaycasterForCountryMeshes
-// would typically happen in the main render loop or a mousemove event listener
-// that then calls this function. For this subtask, the internal logic is the focus.
-// The placeholder (0,0) for mouse coordinates in updateRaycasterForCountryMeshes
-// means it won't correctly find intersects without external mouse updates.
-// The subtask asks to adapt logic, which has been done.
-// The actual call to updateCountryMeshAppearance from map-display.ts is aliased
-// to data.updateCountryAppearanceCallback in MapInteractionData for flexibility.
-// A decision was made to use HOVER_COLOR for hover, and SELECTED_COLOR for selected.
-// If a country is selected AND hovered, it will show SELECTED_COLOR (or a combined one if desired).
-// The current logic for hover state change ensures the previously hovered country is reset
-// to its correct state (selected or original) before applying hover to a new one.
-// A helper findCountryDataFromIntersect was added to avoid code duplication.
-// The updateCountryMeshAppearance function from map-display.ts is expected to handle
-// setting the mesh material color directly.
+      // Highlight new hovered country
+      if (newHoveredCountryId) {
+        const newHoverData = data.countryMeshes.get(newHoveredCountryId);
+        if (newHoverData) {
+          // newHoverData.isHovered = true; // State managed by MapRenderer via setHoveredCountry
+          const isSelected = data.selectedCountryId === newHoveredCountryId;
+          data.updateCountryAppearanceCallback(newHoverData, newHoverData.originalColor, isSelected, true);
+        }
+      }
+      // Crucially, update the hoveredCountryId in the interactionData object,
+      // so MapRenderer can pick it up and update its own state.
+      data.hoveredCountryId = newHoveredCountryId;
+    }
+  }

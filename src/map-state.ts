@@ -44,7 +44,9 @@ export interface MapState {
   currentMapMode: MapMode;
   selectedCountryId: string | null;
   hoveredCountryId: string | null;
-  // Potentially add other global map states here, like zoom level, camera position if managed globally
+  zoomLevel: number;
+  currentCenter: THREE.Vector2; // For smooth panning
+  targetCenter: THREE.Vector2;  // Target for panning
 }
 
 export function createInitialMapState(): MapState {
@@ -52,6 +54,9 @@ export function createInitialMapState(): MapState {
     currentMapMode: MapMode.Political,
     selectedCountryId: null,
     hoveredCountryId: null,
+    zoomLevel: 1,
+    currentCenter: new THREE.Vector2(0, 0),
+    targetCenter: new THREE.Vector2(0, 0),
   };
 }
 
@@ -77,6 +82,28 @@ export function setHoveredCountry(currentState: MapState, countryId: string | nu
   };
 }
 
+export function setZoomLevel(currentState: MapState, zoomLevel: number): MapState {
+  return {
+    ...currentState,
+    // Clamp zoomLevel between 0.25 and 5 as requested
+    zoomLevel: Math.max(0.25, Math.min(5, zoomLevel))
+  };
+}
+
+export function setCurrentCenter(currentState: MapState, center: THREE.Vector2): MapState {
+  return {
+    ...currentState,
+    currentCenter: center.clone(), // Clone to ensure immutability if Vector2 is mutated elsewhere
+  };
+}
+
+export function setTargetCenter(currentState: MapState, target: THREE.Vector2): MapState {
+  return {
+    ...currentState,
+    targetCenter: target.clone(),
+  };
+}
+
 
 const DEFAULT_COUNTRY_COLOR_HEX = 0xCCCCCC; // Light Grey as a default
 
@@ -93,44 +120,58 @@ export function getCountryBaseColor(country: Country | undefined, mode: MapMode)
 
   switch (mode) {
     case MapMode.Political:
-      // Example: Use MAPCOLOR7 if available, otherwise default
-      // GeoJSON properties often use strings for colors, or numerical indices.
-      // This needs to be adapted to the actual data format in world-countries.geojson
-      if (country.properties.MAPCOLOR7) {
-        // Attempt to create a color based on MAPCOLOR7. This is a simplification.
-        // Real map coloring is more complex (e.g., ensuring adjacent countries have different colors).
-        // For now, we'll use a pseudo-random color based on the MAPCOLOR7 value.
-        const colorIndex = parseInt(country.properties.MAPCOLOR7, 10) % 10; // Example
-        return new THREE.Color().setHSL(colorIndex / 10, 0.7, 0.7);
+      // Assuming an 'ALIGNMENT' property like 'western', 'eastern', 'neutral'
+      const alignment = country.properties.ALIGNMENT?.toLowerCase(); // Make it case-insensitive
+      if (alignment === 'western') {
+        return new THREE.Color(0x0077FF); // Brighter blue
+      } else if (alignment === 'eastern') {
+        return new THREE.Color(0xFF3333); // Brighter red
+      } else if (alignment === 'neutral') {
+        return new THREE.Color(0x33CC33); // Brighter green
+      } else if (country.properties.MAPCOLOR7) { // Fallback to MAPCOLOR7 if no specific alignment
+        const colorIndex = parseInt(country.properties.MAPCOLOR7, 10) % 10;
+        return new THREE.Color().setHSL(colorIndex / 10, 0.7, 0.6); // Adjusted lightness
       }
-      return new THREE.Color(DEFAULT_COUNTRY_COLOR_HEX);
+      // Fallback for 'other' or undefined alignment if MAPCOLOR7 also not present
+      return new THREE.Color(0x9933FF); // Brighter purple for 'other'
 
     case MapMode.Population:
-      // Example: Color intensity based on population
-      // This requires knowing the range of POP_EST values to normalize properly.
       const popEst = country.properties.POP_EST ? Number(country.properties.POP_EST) : 0;
       if (popEst > 0) {
-        const intensity = Math.min(1, Math.log10(popEst) / Math.log10(1.4e9)); // Normalize against max known population (approx)
-        return new THREE.Color(intensity, 0, 0); // Red intensity
+        // Simple log scale, may need adjustment based on actual data range for better distribution
+        const maxPopLog = Math.log10(1.5e9); // Approx max population
+        const intensity = Math.min(1, Math.log10(popEst) / maxPopLog);
+        return new THREE.Color().setHSL(0, 0.8, intensity * 0.5 + 0.2); // Red hue, varying lightness
       }
       return new THREE.Color(DEFAULT_COUNTRY_COLOR_HEX);
 
-    case MapMode.GDP:
+    case MapMode.GDP: // Or a new MapMode.EconomyDevelopment
+      const incomeGrp = country.properties.INCOME_GRP?.toLowerCase();
+      if (incomeGrp?.startsWith('1. high income') || incomeGrp?.startsWith('2. high income')) {
+        return new THREE.Color(0x2ECC71); // Emerald green
+      } else if (incomeGrp?.startsWith('3. upper middle income')) {
+        return new THREE.Color(0xF1C40F); // Sunflower yellow
+      } else if (incomeGrp?.startsWith('4. lower middle income') || incomeGrp?.startsWith('5. low income')) {
+        return new THREE.Color(0xE74C3C); // Alizarin red
+      }
+      // Fallback if INCOME_GRP is not one of the expected values
       const gdpMd = country.properties.GDP_MD ? Number(country.properties.GDP_MD) : 0;
       if (gdpMd > 0) {
-        const intensity = Math.min(1, Math.log10(gdpMd) / Math.log10(2.1e7)); // Normalize against max known GDP (approx)
-        return new THREE.Color(0, intensity, 0); // Green intensity
+        const maxGdpLog = Math.log10(2.2e7); // Approx max GDP_MD for a country
+        const intensity = Math.min(1, Math.log10(gdpMd) / maxGdpLog);
+        return new THREE.Color().setHSL(0.33, 0.8, intensity * 0.5 + 0.2); // Green hue, varying lightness
       }
       return new THREE.Color(DEFAULT_COUNTRY_COLOR_HEX);
 
-    // Add more cases for other map modes as needed
-    // case MapMode.Terrain:
-    //   return new THREE.Color(0x556B2F); // DarkOliveGreen
-    // case MapMode.DevelopmentIndex:
+    case MapMode.Terrain: // Example placeholder
+      return new THREE.Color(0x8B4513); // SaddleBrown for terrain
+
+    // case MapMode.DevelopmentIndex: // Example placeholder
     //   // Logic based on development index
     //   return new THREE.Color(0x0000FF); // Blue for example
 
     default:
+      // Fallback to a default color if mode is unknown or properties are missing
       return new THREE.Color(DEFAULT_COUNTRY_COLOR_HEX);
   }
 }

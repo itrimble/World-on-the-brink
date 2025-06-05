@@ -5,7 +5,7 @@ import * as THREE from 'three';
 let countryGeometries: Map<string, THREE.ShapeGeometry[]> | null = null;
 let countryProperties: Map<string, any> | null = null; // To store GeoJSON properties
 
-const PROJECTION_SCALE = 1; // Adjusted scale factor for potentially better default sizing
+const PROJECTION_SCALE = 1.5; // Increased for larger country appearance
 const DEFAULT_COUNTRY_COLOR = 0x808080; // Grey
 
 export interface CountryMeshData {
