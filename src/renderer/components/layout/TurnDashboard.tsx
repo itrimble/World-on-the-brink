@@ -1,10 +1,10 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../store'; // Adjust path to your store
-import { advanceTurn, selectCurrentTurn, selectCurrentYear, selectIsLoadingNextTurn } from '../../../store/gameSlice'; // Moved to src/store
-import { selectPoliticalCapital, selectPrestige } from '../../../store/player-slice'; // Moved to src/store
-import { selectTensionLevel, selectClimateStability } from '../../../store/world-slice'; // Moved to src/store
-import Button from '../common/Button'; // Assuming a common Button component exists
+import { RootState, AppDispatch } from '../../../store'; // Corrected path
+import { advanceTurn, selectCurrentTurn, selectCurrentYear, selectIsLoadingNextTurn } from '../../store/slices/gameSlice'; // Corrected path
+import { selectPoliticalCapital, selectPrestige } from '../../store/slices/player-slice'; // Corrected path
+import { selectTensionLevel, selectClimateStability } from '../../store/slices/world-slice'; // Corrected path
+import Button from '../common/Button';
 
 /**
  * `TurnDashboard` component displays key game state information like turn, year, player stats,
@@ -97,4 +97,4 @@ const TurnDashboard: React.FC = () => {
 };
 
 export default TurnDashboard;
-
+```

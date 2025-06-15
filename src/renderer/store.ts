@@ -1,9 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
-import playerReducer from '../store/player-slice'; // Moved to src/store
-import worldReducer from '../store/world-slice';   // Moved to src/store
-import uiReducer from '../store/uislice-component'; // Moved to src/store
-import gameReducer from '../store/gameSlice';     // Moved to src/store
-import aiPlayerReducer from '../store/ai-player-slice'; // Moved to src/store
+import playerReducer from './slices/player-slice';
+import worldReducer from './slices/world-slice';
+import uiReducer from './slices/uiSlice';
+import gameReducer from './slices/gameSlice';
+import aiPlayerReducer from './slices/ai-player-slice';
 /**
  * The root Redux store for the application.
  * It combines reducers from different feature slices.
@@ -47,4 +47,4 @@ export type AppThunk<ReturnType = void> = import('@reduxjs/toolkit').AsyncThunk<
  */
 export type AppDispatch = typeof store.dispatch;
 export default store;
-
+```

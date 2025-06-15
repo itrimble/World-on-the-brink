@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import MainLayout from './components/layout/MainLayout';
 import PreGameView from './components/views/PreGameView'; // Import PreGameView
 import { RootState } from './store'; // Assuming store exports RootState
-import { selectGamePhase } from '../store/gameSlice'; // Adjust path to gameSlice in store
+import { selectGamePhase } from './store/slices/gameSlice'; // Adjusted path to gameSlice
 
 // Import Redux store and Provider if they exist and are needed here
 // import { Provider } from 'react-redux';
@@ -29,3 +29,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+```

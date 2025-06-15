@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Country } from '../../../shared/types/country'; // This path might need adjustment if shared types are elsewhere
+import { Country } from '../../types'; // Corrected path
 
 /**
  * Defines the different modes the map can be in, affecting country colors and potentially other display elements.

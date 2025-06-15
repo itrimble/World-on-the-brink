@@ -1,9 +1,9 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState, AppDispatch } from '../../store'; // Adjusted path
-import { setMapMode } from '../../../store/uislice-component'; // Moved to src/store
-import type { MapMode } from '../../../store/uislice-component'; // Import type from the same source
-import Button from '../common/Button'; // Adjusted path
+import { RootState, AppDispatch } from '../../../store'; // Correct path
+import { setMapMode } from '../../store/slices/uiSlice'; // Corrected path
+import type { MapMode } from '../../store/slices/uiSlice'; // Corrected path
+import Button from '../common/Button';
 
 /**
  * `MenuBar` component provides top-level navigation and controls,
@@ -57,4 +57,4 @@ const MenuBar: React.FC = () => {
 };
 
 export default MenuBar;
-
+```
