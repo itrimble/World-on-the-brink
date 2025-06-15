@@ -1,13 +1,13 @@
 // src/renderer/components/panels/PolicyActionPanel.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../store';
-import { Policy, PolicyType } from '../../../shared/types/policy';
-import { addPolicy } from '../../features/player/playerSlice';
-import { audioService } from '../../services/AudioService';
+import { RootState } from '../../../store'; // Corrected path
+import { Policy, PolicyType } from '../../../shared/types/policy'; // Path seems okay if shared is root
+import { addPolicy } from '../../store/slices/playerSlice'; // Corrected path
+import { audioService } from '../../services/AudioService'; // Path seems okay
 import Button from '../common/Button'; 
 import ErrorMessage from '../common/ErrorMessage';
-import { createLogger } from '../../utils/logger'; // Assuming logger is available
+import { createLogger } from '../../utils/logger'; // Path seems okay
 
 const logger = createLogger('PolicyActionPanel');
 

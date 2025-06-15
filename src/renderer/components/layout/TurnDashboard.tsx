@@ -1,10 +1,10 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../store'; // Adjust path to your store
-import { advanceTurn, selectCurrentTurn, selectCurrentYear, selectIsLoadingNextTurn } from '../../../../gameSlice'; // Adjust path to gameSlice in root
-import { selectPoliticalCapital, selectPrestige } from '../../../../player-slice'; // Adjust path to player-slice in root
-import { selectTensionLevel, selectClimateStability } from '../../../../world-slice'; // Adjust path to world-slice in root
-import Button from '../common/Button'; // Assuming a common Button component exists
+import { RootState, AppDispatch } from '../../../store'; // Corrected path
+import { advanceTurn, selectCurrentTurn, selectCurrentYear, selectIsLoadingNextTurn } from '../../store/slices/gameSlice'; // Corrected path
+import { selectPoliticalCapital, selectPrestige } from '../../store/slices/player-slice'; // Corrected path
+import { selectTensionLevel, selectClimateStability } from '../../store/slices/world-slice'; // Corrected path
+import Button from '../common/Button';
 
 /**
  * `TurnDashboard` component displays key game state information like turn, year, player stats,

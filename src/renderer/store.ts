@@ -1,9 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
-import playerReducer from '../../player-slice'; // Adjust path to root
-import worldReducer from '../../world-slice';   // Adjust path to root
-import uiReducer from '../../uislice-component'; // Adjust path to root (assuming uislice-component.ts is uiSlice.ts)
-import gameReducer from '../../gameSlice';     // Adjust path to root
-import aiPlayerReducer from '../../ai-player-slice'; // Adjust path to root
+import playerReducer from './slices/player-slice';
+import worldReducer from './slices/world-slice';
+import uiReducer from './slices/uiSlice';
+import gameReducer from './slices/gameSlice';
+import aiPlayerReducer from './slices/ai-player-slice';
 /**
  * The root Redux store for the application.
  * It combines reducers from different feature slices.

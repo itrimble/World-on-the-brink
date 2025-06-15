@@ -1,10 +1,10 @@
 import React, { useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { MapRenderer } from '../../../../map-renderer'; // Path to map-renderer.ts in root
-import { Country } from '../../types'; // Path to placeholder Country type in src/renderer/types.ts
-import { selectCountry as setSelectedCountryAction } from '../../../../uislice-component'; // Path to uiSlice actions
-import type { MapMode } from '../../../../uislice-component'; // Import MapMode type
-import { AppDispatch, RootState } from '../../store'; // Path to store for types
+import { MapRenderer } from '../../features/map/map-renderer'; // Corrected path
+import { Country } from '../../types';
+import { selectCountry as setSelectedCountryAction } from '../../store/slices/uiSlice'; // Corrected path
+import type { MapMode } from '../../store/slices/uiSlice'; // Corrected path
+import { AppDispatch, RootState } from '../../../store'; // Corrected path
 
 // Placeholder mock data for countries - replace with actual data loading later
 // Ensure this mock data aligns with the placeholder Country type definition.
@@ -36,19 +36,18 @@ const MapView: React.FC = () => {
 
   // Effect for initializing and cleaning up the MapRenderer instance
   useEffect(() => {
-    let renderer: MapRenderer | null = null; // Variable to hold the instance within the effect scope
+    let rendererInstance: MapRenderer | null = null;
     if (mapContainerRef.current && !mapRendererRef.current) {
-      renderer = new MapRenderer(mapContainerRef.current);
-      mapRendererRef.current = renderer; // Store instance in ref for access in other effects/callbacks
-      
-      // Set up the onCountrySelect callback for MapRenderer
-      renderer.setOnCountrySelect((countryId: string | null) => {
-        dispatch(setSelectedCountryAction(countryId)); 
+      // The MapRenderer constructor now expects the onCountrySelect callback.
+      rendererInstance = new MapRenderer(mapContainerRef.current, (countryId: string | null) => {
+        dispatch(setSelectedCountryAction(countryId));
       });
+      mapRendererRef.current = rendererInstance;
 
-      // Load initial map data
-      // In a real application, this data would likely come from a Redux state or be fetched.
-      renderer.loadMap(mockCountriesData); 
+      // loadMap no longer takes mockCountriesData directly, it uses getCountryProperties internally
+      // rendererInstance.loadMap(); // This will be called internally after initializeMapData resolves
+
+      // The call to setOnCountrySelect is removed as it's now passed in constructor.
     }
 
     // Cleanup function to dispose of the MapRenderer instance when the component unmounts.

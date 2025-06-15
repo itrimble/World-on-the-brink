@@ -1,9 +1,9 @@
 // src/renderer/components/map/MapControls.tsx
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../store';
-import { setMapMode } from '../../features/ui/uiSlice';
-import { Button } from '../common/Button';
+import { RootState } from '../../../store'; // Corrected path
+import { setMapMode } from '../../../store/slices/uiSlice'; // Corrected path
+import { Button } from '../../common/Button'; // Corrected path
 export const MapControls: React.FC = () => {
   const dispatch = useDispatch();
   const currentMapMode = useSelector((state: RootState) => state.ui.mapMode);

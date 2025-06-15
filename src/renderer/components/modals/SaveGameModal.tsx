@@ -1,14 +1,14 @@
-// src/renderer/components/SaveGameModal.tsx
+// src/renderer/components/modals/SaveGameModal.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
-import { saveGameService } from '../../services/SaveGameService';
-import { audioService } from '../../services/AudioService';
-import Modal from './common/Modal';
-import Button from './common/Button';
-import ErrorMessage from './common/ErrorMessage';
-import { createLogger } from '../utils/logger'; // Assuming logger is available
-import type { SavedGameMetadata } from '../../shared/types/game'; // Consistent type import
+import { RootState } from '../../../store'; // Adjusted path
+import { saveGameService } from '../../services/save-game-service'; // Adjusted path
+import { audioService } from '../../services/AudioService'; // Path likely correct if AudioService is in src/renderer/services/
+import Modal from '../common/Modal'; // Adjusted path
+import Button from '../common/Button'; // Adjusted path
+import ErrorMessage from '../common/ErrorMessage'; // Adjusted path
+import { createLogger } from '../../utils/logger'; // Adjusted path
+import type { SavedGameMetadata } from '../../../shared/types/game'; // Adjusted path
 
 const logger = createLogger('SaveGameModal');
 

@@ -1,15 +1,14 @@
 // src/renderer/components/LoadGameModal.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
-import { saveGameService } from '../../services/SaveGameService';
+import { saveGameService } from '../../services/save-game-service';
 import { audioService } from '../../services/AudioService';
-import Modal from './common/Modal';
-import Button from './common/Button';
-import ErrorMessage from './common/ErrorMessage';
-import { setLoading, setError } from '../../features/game/gameSlice';
-import { loadGameState } from '../../features/game/gameActions';
-import { createLogger } from '../utils/logger';
-import type { SavedGameMetadata } from '../../shared/types/game'; // Assuming this type is available
+import Modal from '../common/Modal';
+import Button from '../common/Button';
+import ErrorMessage from '../common/ErrorMessage';
+import { setLoading, setError, loadGameState } from '../../store/slices/gameSlice';
+import { createLogger } from '../../utils/logger';
+import type { SavedGameMetadata } from '../../../shared/types/game';
 
 const logger = createLogger('LoadGameModal');
 

@@ -31,9 +31,9 @@ import {
   setSelectedCountry,
   setHoveredCountry,
   setZoomLevel,
-  setCurrentCenter, // Import setCurrentCenter
-  setTargetCenter,  // Import setTargetCenter
-} from '../../../map-state'; // Adjusted path
+  setCurrentCenter,
+  setTargetCenter,
+} from './map-state'; // Adjusted path to co-located file
 
 // Define default colors for interaction states, if not already in map-display
 const HIGHLIGHT_COLOR_SELECTED = new THREE.Color(0x00FF00); // Green
