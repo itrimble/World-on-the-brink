@@ -67,4 +67,4 @@ const MapView: React.FC = () => {
 };
 
 export default MapView;
-```
+

@@ -47,4 +47,4 @@ export type AppThunk<ReturnType = void> = import('@reduxjs/toolkit').AsyncThunk<
  */
 export type AppDispatch = typeof store.dispatch;
 export default store;
-```
+
