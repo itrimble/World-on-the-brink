@@ -29,6 +29,10 @@ export interface MapState {
   targetCenter: THREE.Vector2;
   /** The current map center coordinates, reflecting the ongoing smooth pan animation. */
   currentCenter: THREE.Vector2;
+  /** The currently selected country ID, or null if no country is selected. */
+  selectedCountryId: string | null;
+  /** The currently hovered country ID, or null if no country is hovered. */
+  hoveredCountryId: string | null;
 }
 
 /**
@@ -44,6 +48,8 @@ export function createInitialMapState(): MapState {
     dragStart: new THREE.Vector2(),
     targetCenter: new THREE.Vector2(0, 0),
     currentCenter: new THREE.Vector2(0, 0),
+    selectedCountryId: null,
+    hoveredCountryId: null,
   };
 }
 
@@ -62,6 +68,9 @@ export function setMapMode(state: MapState, mode: MapMode): MapState {
   clearColorCache(); // Invalidate color cache as map mode changes base colors.
   return { ...state, currentMapMode: mode };
 }
+
+// Alias for compatibility with MapRenderer
+export const setStateMapMode = setMapMode;
 
 /**
  * Updates the `currentColorData` in the state.
@@ -126,6 +135,26 @@ export function setTargetCenter(state: MapState, targetCenter: THREE.Vector2): M
  */
 export function setCurrentCenter(state: MapState, currentCenter: THREE.Vector2): MapState {
   return { ...state, currentCenter };
+}
+
+/**
+ * Updates the selected country in the state.
+ * @param state - The current `MapState`.
+ * @param countryId - The ID of the selected country, or null to deselect.
+ * @returns A new `MapState` object with the updated selected country.
+ */
+export function setSelectedCountry(state: MapState, countryId: string | null): MapState {
+  return { ...state, selectedCountryId: countryId };
+}
+
+/**
+ * Updates the hovered country in the state.
+ * @param state - The current `MapState`.
+ * @param countryId - The ID of the hovered country, or null if no country is hovered.
+ * @returns A new `MapState` object with the updated hovered country.
+ */
+export function setHoveredCountry(state: MapState, countryId: string | null): MapState {
+  return { ...state, hoveredCountryId: countryId };
 }
 
 // --- Color Calculation and Caching ---

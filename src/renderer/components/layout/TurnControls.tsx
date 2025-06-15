@@ -1,7 +1,6 @@
-```typescript
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../../store'; // Corrected path for RootState
+import { RootState, AppDispatch } from '../../store'; // Corrected path for RootState
 import {
   advanceTurn,
   selectIsLoadingNextTurn,
@@ -11,10 +10,10 @@ import {
   selectOneMoreTurnTaken
 } from '../../store/slices/gameSlice'; // Corrected path
 import { selectAIIsThinking } from '../../store/slices/ai-player-slice'; // Corrected path
-import { Button } from '../common/Button'; // Corrected path for Button
+import Button from '../common/Button'; // Corrected import for Button
 
 export const TurnControls: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const gamePhase = useSelector((state: RootState) => selectGamePhase(state));
   const isLoadingNextTurn = useSelector((state: RootState) => selectIsLoadingNextTurn(state));
   const aiIsThinking = useSelector((state: RootState) => selectAIIsThinking(state));

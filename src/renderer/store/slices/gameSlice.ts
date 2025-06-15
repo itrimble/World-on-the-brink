@@ -1,8 +1,9 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
-import { AppThunk, RootState } from './src/renderer/store'; // Assuming store is at src/renderer/store.ts
+// Note: Avoiding circular import, RootState will be available when this slice is integrated
 import { prepareNextTurn as preparePlayerNextTurn } from './player-slice'; // Path to player-slice.ts in root
 import { processWorldTurn } from './world-slice'; // Path to world-slice.ts in root
 import { processAITurn } from './ai-player-slice'; // Import AI turn processing
+import { PrestigeService } from '../../services/PrestigeService';
 
 const GAME_OVER_YEAR = 2030; // Define game over year
 
@@ -16,6 +17,11 @@ export interface GameState {
   oneMoreTurnTaken: boolean; // Flag for "One More Turn" feature
   isLoadingNextTurn: boolean;
   error: string | null;
+  victoryCondition: 'none' | 'prestige_victory' | 'diplomatic_victory' | 'defeat' | 'nuclear_war' | 'stalemate';
+  victoryReason: string | null;
+  prestigeTarget: number;
+  aiPrestige: number;
+  difficulty: 'easy' | 'normal' | 'hard' | 'realistic';
 }
 
 /**
@@ -29,6 +35,11 @@ const initialState: GameState = {
   oneMoreTurnTaken: false, // Initialize flag
   isLoadingNextTurn: false,
   error: null,
+  victoryCondition: 'none',
+  victoryReason: null,
+  prestigeTarget: 50, // Will be calculated based on difficulty
+  aiPrestige: 0,
+  difficulty: 'normal',
 };
 
 /**
@@ -74,6 +85,37 @@ const gameSlice = createSlice({
         state.oneMoreTurnTaken = true;
         state.gamePhase = 'playing'; // Allow one more turn
       }
+    },
+    setDifficulty: (state, action: PayloadAction<'easy' | 'normal' | 'hard' | 'realistic'>) => {
+      state.difficulty = action.payload;
+      // Recalculate prestige target based on difficulty
+      const totalTurns = GAME_OVER_YEAR - 2025; // 5 years = 5 turns
+      state.prestigeTarget = PrestigeService.calculateVictoryPrestigeTarget(totalTurns, action.payload);
+    },
+    adjustAIPrestige: (state, action: PayloadAction<number>) => {
+      state.aiPrestige += action.payload;
+    },
+    setVictoryCondition: (state, action: PayloadAction<{ condition: GameState['victoryCondition']; reason: string }>) => {
+      state.victoryCondition = action.payload.condition;
+      state.victoryReason = action.payload.reason;
+      if (action.payload.condition !== 'none') {
+        state.gamePhase = 'over';
+      }
+    },
+    loadGameState: (state, action: PayloadAction<{ currentTurn: number; currentYear: number; difficulty: 'easy' | 'normal' | 'hard' | 'realistic' }>) => {
+      state.currentTurn = action.payload.currentTurn;
+      state.currentYear = action.payload.currentYear;
+      state.difficulty = action.payload.difficulty;
+      state.gamePhase = 'playing';
+      state.oneMoreTurnTaken = false;
+      state.isLoadingNextTurn = false;
+      state.error = null;
+      state.victoryCondition = 'none';
+      state.victoryReason = null;
+      
+      // Recalculate prestige target based on loaded difficulty
+      const totalTurns = GAME_OVER_YEAR - 2025;
+      state.prestigeTarget = PrestigeService.calculateVictoryPrestigeTarget(totalTurns, action.payload.difficulty);
     }
   },
   extraReducers: (builder) => {
@@ -100,24 +142,58 @@ const gameSlice = createSlice({
  * 3. Dispatches `processWorldTurn` from `worldSlice` for world-specific turn updates.
  * It also handles loading and error states for the turn advancement process.
  */
-export const advanceTurn = createAsyncThunk<void, void, { state: RootState }>(
+export const advanceTurn = createAsyncThunk<void, void, { state: any }>(
   'game/advanceTurn',
   async (_, { dispatch, getState, rejectWithValue }) => { // Added getState
     try {
       // 1. Increment turn counter, year, etc.
       dispatch(gameSlice.actions.incrementTurn());
 
-      // Check for game over condition
-      const { currentYear, oneMoreTurnTaken: omtTaken } = getState().game; // Destructure for clarity
+      // Check for game over condition and victory conditions
+      const state = getState();
+      const { currentYear, oneMoreTurnTaken: omtTaken, prestigeTarget, aiPrestige, difficulty } = state.game;
+      const playerPrestige = state.player.prestige;
 
+      // Check for early victory conditions
+      const victoryStatus = PrestigeService.evaluateVictoryStatus(
+        playerPrestige,
+        aiPrestige,
+        prestigeTarget,
+        currentYear >= GAME_OVER_YEAR
+      );
+
+      if (victoryStatus !== 'ongoing') {
+        let reason = '';
+        switch (victoryStatus) {
+          case 'victory':
+            reason = currentYear >= GAME_OVER_YEAR 
+              ? `Victory! Final prestige: ${playerPrestige} vs AI: ${aiPrestige}`
+              : `Early Victory! Reached prestige target of ${prestigeTarget}`;
+            break;
+          case 'defeat':
+            reason = `Defeat! Final prestige: ${playerPrestige} vs AI: ${aiPrestige}`;
+            break;
+          case 'stalemate':
+            reason = `Stalemate! Final prestige: ${playerPrestige} vs AI: ${aiPrestige}`;
+            break;
+        }
+        dispatch(gameSlice.actions.setVictoryCondition({ condition: victoryStatus, reason }));
+        return; // End game immediately
+      }
+
+      // Check for time-based game over
       if (currentYear >= GAME_OVER_YEAR) {
         if (omtTaken) {
-          // Already took one more turn, now it's definitively over.
-          dispatch(gameSlice.actions.setGamePhase('over'));
-          console.log(`Game Over: Year ${currentYear} reached. One more turn was taken.`);
-          // Do not proceed with further player/world/AI actions if it's truly over.
-          // However, the thunk needs to complete. Player/World/AI actions below will run for this final "over" turn.
-          // The UI will prevent further "Next Turn" clicks because gamePhase is 'over' and oneMoreTurnTaken is true.
+          // Already took one more turn, now evaluate final victory
+          const finalVictoryStatus = PrestigeService.evaluateVictoryStatus(
+            playerPrestige,
+            aiPrestige,
+            prestigeTarget,
+            true
+          );
+          const finalReason = `Game ended ${currentYear}. Final prestige: ${playerPrestige} vs AI: ${aiPrestige}`;
+          dispatch(gameSlice.actions.setVictoryCondition({ condition: finalVictoryStatus, reason: finalReason }));
+          return;
         } else {
           // First time hitting game over year.
           dispatch(gameSlice.actions.setGamePhase('over'));
@@ -153,14 +229,19 @@ export const advanceTurn = createAsyncThunk<void, void, { state: RootState }>(
   }
 );
 
-export const { incrementTurn, setGamePhase, startGame, takeOneMoreTurn } = gameSlice.actions; // Added takeOneMoreTurn
+export const { incrementTurn, setGamePhase, startGame, takeOneMoreTurn, setDifficulty, adjustAIPrestige, setVictoryCondition, loadGameState } = gameSlice.actions;
 export default gameSlice.reducer;
 
 // Selectors (optional, can also be defined in the component or a dedicated selectors file)
-export const selectCurrentTurn = (state: RootState) => state.game.currentTurn;
-export const selectCurrentYear = (state: RootState) => state.game.currentYear;
-export const selectGamePhase = (state: RootState) => state.game.gamePhase;
-export const selectOneMoreTurnTaken = (state: RootState) => state.game.oneMoreTurnTaken; // Selector for oneMoreTurnTaken
-export const selectIsLoadingNextTurn = (state: RootState) => state.game.isLoadingNextTurn;
-export const selectGameError = (state: RootState) => state.game.error;
+export const selectCurrentTurn = (state: any) => state.game.currentTurn;
+export const selectCurrentYear = (state: any) => state.game.currentYear;
+export const selectGamePhase = (state: any) => state.game.gamePhase;
+export const selectOneMoreTurnTaken = (state: any) => state.game.oneMoreTurnTaken;
+export const selectIsLoadingNextTurn = (state: any) => state.game.isLoadingNextTurn;
+export const selectGameError = (state: any) => state.game.error;
+export const selectVictoryCondition = (state: any) => state.game.victoryCondition;
+export const selectVictoryReason = (state: any) => state.game.victoryReason;
+export const selectPrestigeTarget = (state: any) => state.game.prestigeTarget;
+export const selectAIPrestige = (state: any) => state.game.aiPrestige;
+export const selectDifficulty = (state: any) => state.game.difficulty;
 

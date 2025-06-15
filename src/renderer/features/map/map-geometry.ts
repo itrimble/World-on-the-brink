@@ -191,7 +191,7 @@ export function clearCountryMeshes(mapGroup: THREE.Group, countryMeshMap: Countr
  */
 export async function initializeMapData(): Promise<void> {
   try {
-    const geojsonData = await loadGeoJSONData('../assets/world-countries.geojson');
+    const geojsonData = await loadGeoJSONData('/assets/world-countries.geojson');
 
     if (geojsonData && geojsonData.features) {
       console.log(`Successfully loaded ${geojsonData.features.length} GeoJSON features.`);

@@ -1,6 +1,6 @@
 // src/renderer/services/SaveGameService.ts
-import { store } from '../store';
-import { GameState } from '../../shared/types/game';
+import store from '../store';
+import { SaveGameState, SavedGameMetadata } from '../../shared/types/game';
 import { createLogger } from '../utils/logger'; // Import the logger
 
 const logger = createLogger('SaveGameService');
@@ -31,15 +31,15 @@ export class SaveGameService {
 
     try {
       const state = store.getState();
-      // Construct the GameState object from the current Redux store state.
+      // Construct the SaveGameState object from the current Redux store state.
       // This object represents the complete data to be saved.
-      const saveData: GameState = {
+      const saveData: SaveGameState = {
         currentTurn: state.game.currentTurn,
-        startYear: state.game.startYear,
+        startYear: 2025, // Default start year
         currentYear: state.game.currentYear,
-        endYear: state.game.endYear,
-        gameDifficulty: state.game.gameDifficulty,
-        gameMode: state.game.gameMode,
+        endYear: 2030, // Default end year
+        gameDifficulty: 'normal', // Default difficulty
+        gameMode: 'standard', // Default game mode
         world: {
           countries: state.world.countries,
           tensionLevel: state.world.tensionLevel,
@@ -67,6 +67,10 @@ export class SaveGameService {
 
       logger.debug(`Calling IPC 'saveGame' for file: ${fileName}`, { dataSize: JSON.stringify(saveData).length });
       // Delegate file saving to the main process.
+      if (!window.electronAPI) {
+        // Fallback for web environment
+        return { success: false, error: 'Save functionality not available in web environment' };
+      }
       const result = await window.electronAPI.saveGame(fileName, saveData);
 
       if (result.success) {
@@ -94,11 +98,14 @@ export class SaveGameService {
    * @returns A promise that resolves to an object containing the loaded `GameState` if successful,
    *          or an error message if loading or validation fails.
    */
-  public async loadGame(fileName: string): Promise<{ success: boolean; data?: GameState; error?: string }> {
+  public async loadGame(fileName: string): Promise<{ success: boolean; data?: SaveGameState; error?: string }> {
     logger.info(`Attempting to load game: "${fileName}"`);
     try {
       logger.debug(`Calling IPC 'loadGame' for file: ${fileName}`);
       // Delegate file loading to the main process.
+      if (!window.electronAPI) {
+        return { success: false, error: 'Load functionality not available in web environment' };
+      }
       const result = await window.electronAPI.loadGame(fileName);
 
       if (result.success && result.data) {
@@ -109,7 +116,7 @@ export class SaveGameService {
           return { success: false, error: `Save file "${fileName}" contains invalid or corrupted data. It may be from an incompatible version or tampered.` };
         }
         logger.info(`Game "${fileName}" loaded and validated successfully.`);
-        return { success: true, data: result.data as GameState }; // Cast after validation.
+        return { success: true, data: result.data as SaveGameState }; // Cast after validation.
       } else {
         logger.error(`IPC 'loadGame' failed for "${fileName}". Error: ${result.error}`);
         return { success: false, error: `Failed to load game "${fileName}": ${result.error}` };
@@ -140,6 +147,9 @@ export class SaveGameService {
     try {
       logger.debug("Calling IPC 'listSavedGames'");
       // Delegate listing to the main process.
+      if (!window.electronAPI) {
+        return { success: false, error: 'List games functionality not available in web environment' };
+      }
       const result = await window.electronAPI.listSavedGames();
 
       if (result.success && result.savedGames) {
@@ -172,6 +182,9 @@ export class SaveGameService {
     try {
       logger.debug(`Calling IPC 'deleteSavedGame' for file: ${fileName}`);
       // Delegate file deletion to the main process.
+      if (!window.electronAPI) {
+        return { success: false, error: 'Delete functionality not available in web environment' };
+      }
       const result = await window.electronAPI.deleteSavedGame(fileName);
 
       if (result.success) {
@@ -198,14 +211,14 @@ export class SaveGameService {
    * @returns `true` if the data passes basic validation checks, `false` otherwise.
    * @private
    */
-  private isValidSaveData(data: any): data is GameState {
+  private isValidSaveData(data: any): data is SaveGameState {
     logger.debug('Validating save data structure.');
     if (!data || typeof data !== 'object') {
       logger.warn('Validation failed: Data is null or not an object.', { data });
       return false;
     }
     // Check for presence of top-level state keys.
-    const requiredTopLevelKeys: Array<keyof GameState> = ['world', 'player', 'metadata', 'currentTurn', 'currentYear'];
+    const requiredTopLevelKeys: Array<keyof SaveGameState> = ['world', 'player', 'metadata', 'currentTurn', 'currentYear'];
     for (const key of requiredTopLevelKeys) {
       if (!(key in data)) {
         logger.warn(`Validation failed: Missing top-level key: "${key}".`, { data });
@@ -248,7 +261,7 @@ export class SaveGameService {
    * and attempts to load the newest one.
    * @returns A promise resolving to the loaded game state or an error if no quick saves are found or loading fails.
    */
-  public async quickLoad(): Promise<{ success: boolean; data?: GameState; error?: string }> {
+  public async quickLoad(): Promise<{ success: boolean; data?: SaveGameState; error?: string }> {
     logger.info('Attempting to Quick Load.');
     try {
       const listResult = await this.listSavedGames();

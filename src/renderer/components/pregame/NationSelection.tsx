@@ -8,17 +8,21 @@ interface NationSelectionProps {
 
 const NationSelection: React.FC<NationSelectionProps> = ({ nations, onSelectNation }) => {
   return (
-    <div>
-      <h2>Select a Nation</h2>
-      <ul>
+    <div className="nation-selection">
+      <div className="nations-grid">
         {nations.map((nation) => (
-          <li key={nation.id}>
-            <button onClick={() => onSelectNation(nation.id)}>
-              {nation.name}
-            </button>
-          </li>
+          <button 
+            key={nation.id}
+            className="nation-card"
+            onClick={() => onSelectNation(nation.id)}
+          >
+            <div className="nation-name">{nation.name}</div>
+            <div className="nation-info">
+              <span className="nation-code">{nation.id}</span>
+            </div>
+          </button>
         ))}
-      </ul>
+      </div>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../../store'; // Corrected path
+import { RootState, AppDispatch } from '../../store'; // Corrected path
 import { advanceTurn, selectCurrentTurn, selectCurrentYear, selectIsLoadingNextTurn } from '../../store/slices/gameSlice'; // Corrected path
 import { selectPoliticalCapital, selectPrestige } from '../../store/slices/player-slice'; // Corrected path
 import { selectTensionLevel, selectClimateStability } from '../../store/slices/world-slice'; // Corrected path

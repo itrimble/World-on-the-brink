@@ -1,8 +1,9 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store'; // Adjust path to your store
-import { selectCountryById } from '../../../store/world-slice'; // Moved to src/store
+import { selectCountryById } from '../../store/slices/world-slice';
 import { Country } from '../../types'; // Adjust path to your placeholder Country type
+import { CountryDataService } from '../../services/CountryDataService';
 
 /**
  * `CountryInfoPanel` displays detailed information about the currently selected country.
@@ -77,18 +78,97 @@ const CountryInfoPanel: React.FC = () => {
         </div>
       )}
       
+      {/* Strategic Importance */}
+      <div style={sectionStyle}>
+        <h4 style={headingStyle}>Strategic Assessment</h4>
+        <p>Regional Power: <span style={valueStyle}>
+          {(() => {
+            const militaryPower = country.military?.power || 0;
+            if (militaryPower >= 80) return 'Superpower';
+            if (militaryPower >= 40) return 'Major Power';
+            if (militaryPower >= 20) return 'Regional Power';
+            return 'Minor Power';
+          })()}
+        </span></p>
+        <p>Economic Status: <span style={valueStyle}>
+          {(() => {
+            const gdp = country.economy?.gdp || 0;
+            if (gdp >= 10000) return 'Economic Giant';
+            if (gdp >= 2000) return 'Major Economy';
+            if (gdp >= 500) return 'Regional Economy';
+            return 'Developing Economy';
+          })()}
+        </span></p>
+        <p>Stability Level: <span style={valueStyle}>
+          {(() => {
+            const stability = country.government.stability || 50;
+            if (stability >= 80) return 'Very Stable';
+            if (stability >= 60) return 'Stable';
+            if (stability >= 40) return 'Unstable';
+            return 'Very Unstable';
+          })()}
+        </span></p>
+      </div>
+
       {country.relations && Object.keys(country.relations).length > 0 && (
         <div style={sectionStyle}>
           <h4 style={headingStyle}>Key Relations</h4>
-          {Object.entries(country.relations).map(([otherCountryId, value]) => (
-            <p key={otherCountryId}>{otherCountryId.toUpperCase()}: <span style={valueStyle}>{value}</span></p>
-          ))}
+          {Object.entries(country.relations)
+            .filter(([_, value]) => Math.abs(value - 50) > 20) // Show only significant relations
+            .sort(([_, a], [__, b]) => b - a) // Sort by relation value
+            .slice(0, 6) // Show top 6 relations
+            .map(([otherCountryId, value]) => {
+              const otherCountry = CountryDataService.getCountry(otherCountryId);
+              const relationLevel = value >= 80 ? 'Allied' : 
+                                  value >= 60 ? 'Friendly' : 
+                                  value >= 40 ? 'Neutral' : 
+                                  value >= 20 ? 'Unfriendly' : 'Hostile';
+              const relationColor = value >= 80 ? '#48BB78' : 
+                                   value >= 60 ? '#68D391' : 
+                                   value >= 40 ? '#A0AEC0' : 
+                                   value >= 20 ? '#FBB040' : '#F56565';
+              
+              return (
+                <p key={otherCountryId}>
+                  {otherCountry?.name || otherCountryId.toUpperCase()}: 
+                  <span style={{...valueStyle, color: relationColor}}>
+                    {value} ({relationLevel})
+                  </span>
+                </p>
+              );
+            })}
         </div>
       )}
       
-      {/* Placeholder for future actions/buttons related to this country */}
+      {/* Action opportunities */}
       <div className="mt-6 pt-4 border-t border-gray-700">
-        <p className="text-sm text-gray-500">Actions for {country.name} will appear here.</p>
+        <h4 style={headingStyle}>Policy Opportunities</h4>
+        <div className="text-sm text-gray-400">
+          {(() => {
+            const opportunities = [];
+            const stability = country.government.stability || 50;
+            const insurgency = country.internal.insurgencyLevel;
+            const alignment = country.government.alignment;
+            const playerFaction = useSelector((state: RootState) => state.player.faction);
+            
+            if (stability < 60) {
+              opportunities.push('• Economic Aid could improve stability');
+            }
+            if (insurgency > 15) {
+              opportunities.push('• Military Aid could reduce insurgency');
+            }
+            if (alignment === 'neutral') {
+              opportunities.push('• Diplomatic efforts could shift alignment');
+            }
+            if (country.military?.power && country.military.power > 30) {
+              opportunities.push('• Strategic partnership potential');
+            }
+            
+            return opportunities.length > 0 
+              ? opportunities.map((opp, i) => <p key={i}>{opp}</p>)
+              : <p>• No immediate opportunities identified</p>;
+          })()}
+        </div>
       </div>
     </div>
   );

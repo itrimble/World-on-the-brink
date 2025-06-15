@@ -1,10 +1,12 @@
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+export type MapMode = 'political' | 'influence' | 'insurgency' | 'coup' | 'economy';
+
 export interface UIState {
   selectedCountryId: string | null;
   activePanelId: string | null;
-  mapMode: 'political' | 'influence' | 'insurgency' | 'coup' | 'economy';
+  mapMode: MapMode;
   notifications: {
     id: string;
     message: string;
@@ -43,7 +45,7 @@ export const uiSlice = createSlice({
     },
     
     // Map mode
-    setMapMode: (state, action: PayloadAction<UIState['mapMode']>) => {
+    setMapMode: (state, action: PayloadAction<MapMode>) => {
       state.mapMode = action.payload;
     },
     

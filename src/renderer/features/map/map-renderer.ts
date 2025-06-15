@@ -24,7 +24,6 @@ import {
 import {
   MapState,
   MapMode,
-  Country,
   createInitialMapState,
   getCountryBaseColor as getBaseColorFromState, // Alias to avoid conflict
   setStateMapMode,
@@ -34,6 +33,7 @@ import {
   setCurrentCenter,
   setTargetCenter,
 } from './map-state'; // Adjusted path to co-located file
+import { Country } from '../../types';
 
 // Define default colors for interaction states, if not already in map-display
 const HIGHLIGHT_COLOR_SELECTED = new THREE.Color(0x00FF00); // Green
@@ -50,7 +50,7 @@ export class MapRenderer {
   private raycaster: THREE.Raycaster;
   private mouse: THREE.Vector2;
   private mapState: MapState;
-  private interactionData: MapInteractionData;
+  private interactionData: MapInteractionData | null = null;
   private loadedCountriesData: Record<string, Country> = {};
   private clock: THREE.Clock; // For deltaTime
 
@@ -115,21 +115,20 @@ export class MapRenderer {
                 this.loadedCountriesData[countryId] = {
                     id: countryId,
                     name: props.NAME || props.NAME_LONG || 'Unknown',
-                    properties: props, // Store all raw props
                     // Initialize nested structures with defaults or map from props
                     economy: {
                         gdp: props.GDP_MD ? Number(props.GDP_MD) : undefined,
-                        incomeGroup: props.INCOME_GRP || 'Unknown',
-                        sector: props.ECONOMY || 'Unknown',
+                        development: 'medium' as const, // Default development level
                     },
                     internal: {
-                        population: props.POP_EST ? Number(props.POP_EST) : undefined,
+                        insurgencyLevel: 0, // Default to no insurgency
+                        coupRisk: 0, // Default to no coup risk
                     },
                     government: {
                         type: props.TYPE || 'Unknown',
+                        alignment: 'neutral' as const, // Default alignment
                     },
                     relations: {}, // Placeholder
-                    mapColor: props.MAPCOLOR7 // Example, adapt as needed
                 };
             });
         }
@@ -151,17 +150,21 @@ export class MapRenderer {
       selectedCountryId: this.mapState.selectedCountryId,
       hoveredCountryId: this.mapState.hoveredCountryId, // Will be updated by interaction logic
       camera: this.camera,
-      scene: this.mapGroup,
+      scene: this.scene, // Use scene instead of mapGroup for raycasting
       zoomLevel: this.mapState.zoomLevel,
 
       // Panning related state and callbacks
       isDragging: false, // Initial dragging state
       dragStart: new THREE.Vector2(), // Initial drag start
       setIsDragging: (isDragging: boolean) => {
-        this.interactionData.isDragging = isDragging; // Allow interaction module to update this
+        if (this.interactionData) {
+          this.interactionData.isDragging = isDragging; // Allow interaction module to update this
+        }
       },
       setDragStart: (dragStart: THREE.Vector2) => {
-        this.interactionData.dragStart.copy(dragStart); // Allow interaction module to update this
+        if (this.interactionData) {
+          this.interactionData.dragStart.copy(dragStart); // Allow interaction module to update this
+        }
       },
       onPan: (deltaX: number, deltaY: number) => {
         const currentTarget = this.mapState.targetCenter.clone();
@@ -185,7 +188,8 @@ export class MapRenderer {
     // After meshes are created, set their original colors based on the current map mode
     this.countryMeshes.forEach((meshData, countryId) => {
       const countryTypedData = this.loadedCountriesData[countryId];
-      meshData.originalColor.copy(getBaseColorFromState(countryTypedData, this.mapState.currentMapMode));
+      const colorValue = getBaseColorFromState(countryTypedData, this.mapState.currentMapMode);
+      meshData.originalColor.setHex(colorValue);
     });
 
     this.updateAllMeshAppearances();
@@ -193,7 +197,7 @@ export class MapRenderer {
   }
 
   private updateAllMeshAppearances(): void {
-    updateAllCountryMeshAppearances(this.countryMeshes, this.mapState.selectedCountryId, HIGHLIGHT_COLOR_SELECTED);
+    updateAllCountryMeshAppearances(this.countryMeshes, this.mapState.selectedCountryId, this.mapState.hoveredCountryId);
   }
 
   public setMapMode(mode: MapMode): void {
@@ -203,14 +207,17 @@ export class MapRenderer {
 
     this.countryMeshes.forEach((countryMeshData, countryId) => {
       const countryTypedData = this.loadedCountriesData[countryId];
-      countryMeshData.originalColor.copy(getBaseColorFromState(countryTypedData, this.mapState.currentMapMode));
+      const colorValue = getBaseColorFromState(countryTypedData, this.mapState.currentMapMode);
+      countryMeshData.originalColor.setHex(colorValue);
     });
     this.updateAllMeshAppearances();
   }
 
   public selectCountry(countryId: string | null): void {
     this.mapState = setSelectedCountry(this.mapState, countryId);
-    this.interactionData.selectedCountryId = this.mapState.selectedCountryId;
+    if (this.interactionData) {
+      this.interactionData.selectedCountryId = this.mapState.selectedCountryId;
+    }
 
     this.updateAllMeshAppearances();
 
@@ -231,12 +238,14 @@ export class MapRenderer {
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
     // Synchronize state for interaction module
-    this.interactionData.hoveredCountryId = this.mapState.hoveredCountryId;
-    this.interactionData.selectedCountryId = this.mapState.selectedCountryId;
-    this.interactionData.zoomLevel = this.mapState.zoomLevel;
-    // isDragging and dragStart are managed by interactionData's callbacks
+    if (this.interactionData) {
+      this.interactionData.hoveredCountryId = this.mapState.hoveredCountryId;
+      this.interactionData.selectedCountryId = this.mapState.selectedCountryId;
+      this.interactionData.zoomLevel = this.mapState.zoomLevel;
+      // isDragging and dragStart are managed by interactionData's callbacks
 
-    handleMouseMove(event, this.raycaster, this.interactionData);
+      handleMouseMove(event, this.raycaster, this.interactionData);
+    }
 
     // Update mapState based on the result from interactionData (hoveredCountryId)
     if (this.interactionData && this.mapState.hoveredCountryId !== this.interactionData.hoveredCountryId) {

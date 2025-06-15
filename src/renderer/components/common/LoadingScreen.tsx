@@ -1,4 +1,3 @@
-```typescript
 import React from 'react';
 
 export const LoadingScreen: React.FC = () => {
@@ -15,7 +14,7 @@ export const LoadingScreen: React.FC = () => {
       
       <p className="mt-4 text-gray-400">Loading game resources...</p>
       
-      <style jsx>{`
+      <style>{`
         .loading-bar {
           width: 50%;
           animation: loading 2s infinite ease-in-out;

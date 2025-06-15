@@ -13,12 +13,10 @@ const App: React.FC = () => {
   const gamePhase = useSelector((state: RootState) => selectGamePhase(state));
 
   return (
-    // If using Redux, <Provider store={store}> should wrap this in index.tsx or similar entry point
     <>
       {gamePhase === 'pregame' && <PreGameView />}
       {gamePhase === 'playing' && <MainLayout />}
       {gamePhase === 'paused' && <MainLayout />}
-      {/* Paused state might still show MainLayout, but with overlays or disabled controls handled within MainLayout or TurnControls */}
       {gamePhase === 'over' && (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '2em' }}>
           Game Over

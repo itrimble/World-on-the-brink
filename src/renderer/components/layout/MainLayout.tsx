@@ -4,6 +4,8 @@ import TurnDashboard from './TurnDashboard';
 import NewsTicker from './NewsTicker';
 import ActionPanel from './ActionPanel';
 import MapView from '../map/MapView';
+import { SimpleMapTest } from '../map/SimpleMapTest';
+import { ImprovedMapView } from '../map/ImprovedMapView';
 import SoundtrackControls from '../settings/SoundtrackControls'; // Import SoundtrackControls
 import { soundtrackService } from '../../services/SoundtrackService'; // Import soundtrackService for auto-play
 
@@ -39,7 +41,7 @@ const MainLayout: React.FC = () => {
           The .map-view-container could be considered <main> conceptually.
       */}
       <main className="map-view-container" aria-label="Game Map Area">
-        <MapView />
+        <ImprovedMapView />
       </main>
 
       {/* Action Panel as a complementary aside section */}
