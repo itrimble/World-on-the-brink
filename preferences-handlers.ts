@@ -117,4 +117,3 @@ const loadPreferencesSync = () => {
     return defaultPreferences;
   }
 };
-```

@@ -1,4 +1,4 @@
-```typescript
+
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export interface UIState {
@@ -87,4 +87,3 @@ export const {
 } = uiSlice.actions;
 
 export default uiSlice.reducer;
-```

@@ -269,4 +269,4 @@ export function createSingleRandomCountryShape(): THREE.BufferGeometry {
   shape.closePath();
   return new THREE.ShapeGeometry(shape);
 }
-```
+

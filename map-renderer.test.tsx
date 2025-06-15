@@ -217,4 +217,4 @@ describe('MapRenderer', () => {
   });
 
 });
-```
+

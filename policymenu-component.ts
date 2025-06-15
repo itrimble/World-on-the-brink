@@ -85,4 +85,3 @@ export const PolicyMenu: React.FC<PolicyMenuProps> = ({ countryId, onClose }) =>
     </div>
   );
 };
-```

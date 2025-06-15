@@ -1,9 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
-import playerReducer from '../../player-slice'; // Adjust path to root
-import worldReducer from '../../world-slice';   // Adjust path to root
-import uiReducer from '../../uislice-component'; // Adjust path to root (assuming uislice-component.ts is uiSlice.ts)
-import gameReducer from '../../gameSlice';     // Adjust path to root
-import aiPlayerReducer from '../../ai-player-slice'; // Adjust path to root
+import playerReducer from '../store/player-slice'; // Moved to src/store
+import worldReducer from '../store/world-slice';   // Moved to src/store
+import uiReducer from '../store/uislice-component'; // Moved to src/store
+import gameReducer from '../store/gameSlice';     // Moved to src/store
+import aiPlayerReducer from '../store/ai-player-slice'; // Moved to src/store
 /**
  * The root Redux store for the application.
  * It combines reducers from different feature slices.
@@ -47,4 +47,4 @@ export type AppThunk<ReturnType = void> = import('@reduxjs/toolkit').AsyncThunk<
  */
 export type AppDispatch = typeof store.dispatch;
 export default store;
-```
+

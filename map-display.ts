@@ -194,4 +194,4 @@ export function handleWindowResize(
   camera.updateProjectionMatrix(); // Must be called after changing camera properties like aspect.
   renderer.setSize(width, height);
 }
-```
+

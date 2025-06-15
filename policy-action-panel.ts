@@ -335,4 +335,3 @@ export const PolicyActionPanel: React.FC<PolicyActionPanelProps> = ({
     </div>
   );
 };
-```

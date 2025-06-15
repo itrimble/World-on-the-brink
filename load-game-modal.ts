@@ -387,4 +387,3 @@ export const LoadGameModal: React.FC<LoadGameModalProps> = ({
     </Modal>
   );
 };
-```

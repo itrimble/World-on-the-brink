@@ -10,13 +10,13 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "node", // Changed from "bundler" to "node" for wider compatibility
+    "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true, // Important: tsc checks types, Vite handles emit
+    "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["jest", "node"] // Added "node" for better compatibility with common Node.js patterns
+    "types": ["jest", "node"]
   },
-  "include": ["src", "./*.ts", "./*.tsx"], // Ensure all relevant .ts/.tsx files are included
-  "references": [{ "path": "./tsconfig.node.json" }] // Optional: if you have a separate tsconfig for Node-specific code (like vite.config.ts)
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

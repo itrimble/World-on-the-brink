@@ -231,4 +231,4 @@ function calculateCountryBaseColor(country: Country, currentMapMode: MapMode): n
       return 0x888888; // Default gray for unknown or unhandled modes
   }
 }
-```
+

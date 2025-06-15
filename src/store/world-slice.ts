@@ -1,4 +1,4 @@
-```typescript
+
 // src/renderer/features/game/worldSlice.ts
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { Country } from '../../shared/types/country';
@@ -222,4 +222,3 @@ export const selectCountryById = (state: RootState, countryId: string | null): C
 };
 
 export default worldSlice.reducer;
-```

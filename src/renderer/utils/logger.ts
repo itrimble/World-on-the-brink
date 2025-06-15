@@ -142,4 +142,4 @@ export const createLogger = (moduleName: string): Logger => {
  */
 const defaultLogger = createLogger('APP');
 export default defaultLogger;
-```
+

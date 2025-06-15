@@ -1,9 +1,9 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../store'; // Adjust path to your store
-import { advanceTurn, selectCurrentTurn, selectCurrentYear, selectIsLoadingNextTurn } from '../../../../gameSlice'; // Adjust path to gameSlice in root
-import { selectPoliticalCapital, selectPrestige } from '../../../../player-slice'; // Adjust path to player-slice in root
-import { selectTensionLevel, selectClimateStability } from '../../../../world-slice'; // Adjust path to world-slice in root
+import { advanceTurn, selectCurrentTurn, selectCurrentYear, selectIsLoadingNextTurn } from '../../../store/gameSlice'; // Moved to src/store
+import { selectPoliticalCapital, selectPrestige } from '../../../store/player-slice'; // Moved to src/store
+import { selectTensionLevel, selectClimateStability } from '../../../store/world-slice'; // Moved to src/store
 import Button from '../common/Button'; // Assuming a common Button component exists
 
 /**
@@ -97,4 +97,4 @@ const TurnDashboard: React.FC = () => {
 };
 
 export default TurnDashboard;
-```
+

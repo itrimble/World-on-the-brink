@@ -371,4 +371,3 @@ export const SaveGameModal: React.FC<SaveGameModalProps> = ({
     </Modal>
   );
 };
-```

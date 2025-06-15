@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store'; // Adjust path to your store
-import { selectCountryById } from '../../../../world-slice'; // Adjust path to world-slice in root
+import { selectCountryById } from '../../../store/world-slice'; // Moved to src/store
 import { Country } from '../../types'; // Adjust path to your placeholder Country type
 
 /**
@@ -95,4 +95,4 @@ const CountryInfoPanel: React.FC = () => {
 };
 
 export default CountryInfoPanel;
-```
+

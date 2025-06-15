@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'; // Added useState
 import { useDispatch, useSelector } from 'react-redux';
-import { NationSelection } from '../pregame/NationSelection'; // Corrected path
-import { loadWorldData, selectCountries, selectWorldLoadingStatus, selectWorldError } from '../../../../world-slice'; // Adjust path to root
-import { setFaction, resetPlayer } from '../../../../player-slice'; // Adjust path to root
-import { startGame } from '../../../../gameSlice'; // Adjust path to root
-import { setAIDifficulty, AIDifficulty } from '../../../../ai-player-slice'; // Import AI difficulty actions and type
+import NationSelection from '../pregame/NationSelection'; // Changed to default import
+import { loadWorldData, selectCountries, selectWorldLoadingStatus, selectWorldError } from '../../../store/world-slice'; // Moved to src/store
+import { setFaction, resetPlayer } from '../../../store/player-slice'; // Moved to src/store
+import { startGame } from '../../../store/gameSlice'; // Moved to src/store
+import { setAIDifficulty, AIDifficulty } from '../../../store/ai-player-slice'; // Moved to src/store
 import { AppDispatch, RootState } from '../../store'; // Assuming store is at src/renderer/store
 import { Country } from '../../types';
 

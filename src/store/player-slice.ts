@@ -1,4 +1,4 @@
-```typescript
+
 // src/renderer/features/player/playerSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Policy } from 'src/renderer/types';
@@ -112,4 +112,3 @@ export const selectActivePolicies = (state: { player: PlayerState }) => state.pl
 export const selectDiplomaticInfluence = (state: { player: PlayerState }) => state.player.diplomaticInfluence;
 
 export default playerSlice.reducer;
-```

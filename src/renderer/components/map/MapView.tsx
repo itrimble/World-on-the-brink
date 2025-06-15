@@ -1,9 +1,9 @@
 import React, { useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { MapRenderer } from '../../../../map-renderer'; // Path to map-renderer.ts in root
+import { MapRenderer } from '../../features/map/map-renderer'; // Moved to features/map directory
 import { Country } from '../../types'; // Path to placeholder Country type in src/renderer/types.ts
-import { selectCountry as setSelectedCountryAction } from '../../../../uislice-component'; // Path to uiSlice actions
-import type { MapMode } from '../../../../uislice-component'; // Import MapMode type
+import { selectCountry as setSelectedCountryAction } from '../../../store/uislice-component'; // Moved to src/store
+import type { MapMode } from '../../../store/uislice-component'; // Import MapMode type
 import { AppDispatch, RootState } from '../../store'; // Path to store for types
 
 // Placeholder mock data for countries - replace with actual data loading later
@@ -68,4 +68,4 @@ const MapView: React.FC = () => {
 };
 
 export default MapView;
-```
+
