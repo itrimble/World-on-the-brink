@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "node", // Changed from "bundler" to "node" for wider compatibility
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true, // Important: tsc checks types, Vite handles emit
+    "jsx": "react-jsx",
+    "types": ["jest", "node"] // Added "node" for better compatibility with common Node.js patterns
+  },
+  "include": ["src", "./*.ts", "./*.tsx"], // Ensure all relevant .ts/.tsx files are included
+  "references": [{ "path": "./tsconfig.node.json" }] // Optional: if you have a separate tsconfig for Node-specific code (like vite.config.ts)
+}

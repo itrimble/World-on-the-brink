@@ -2,7 +2,7 @@
 // src/renderer/features/game/worldSlice.ts
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { Country } from '../../shared/types/country';
-import { Crisis } from '../../shared/types/crisis';
+import { Crisis } from 'src/renderer/types';
 
 interface HistoricalEvent {
   id: string;

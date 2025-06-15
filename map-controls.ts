@@ -1,16 +1,13 @@
-```typescript
 // src/renderer/components/map/MapControls.tsx
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { setMapMode } from '../../features/ui/uiSlice';
 import { Button } from '../common/Button';
-
 export const MapControls: React.FC = () => {
   const dispatch = useDispatch();
   const currentMapMode = useSelector((state: RootState) => state.ui.mapMode);
   const [showControls, setShowControls] = useState(true);
-  
   const mapModes = [
     { id: 'political', name: 'Political', icon: '🌎' },
     { id: 'influence', name: 'Influence', icon: '🔵' },
@@ -18,7 +15,6 @@ export const MapControls: React.FC = () => {
     { id: 'coup', name: 'Stability', icon: '🏛️' },
     { id: 'economy', name: 'Economy', icon: '💰' }
   ] as const;
-  
   return (
     <div className="absolute left-4 bottom-20 z-10">
       {showControls ? (
@@ -37,7 +33,6 @@ export const MapControls: React.FC = () => {
                 <span>{mode.name}</span>
               </button>
             ))}
-            
             <button
               className="flex items-center justify-center px-3 py-2 rounded bg-gray-700 hover:bg-gray-600 text-sm"
               onClick={() => setShowControls(false)}
@@ -57,4 +52,3 @@ export const MapControls: React.FC = () => {
     </div>
   );
 };
-```

@@ -1,5 +1,4 @@
 // src/renderer/utils/logger.ts
-
 /**
  * Defines the available log levels.
  * Lower numbers indicate higher verbosity.
@@ -14,7 +13,6 @@ enum LogLevel {
   /** Errors that prevent normal operation or indicate a failure. */
   ERROR = 3,
 }
-
 /**
  * Current log level for the application.
  * Only messages at this level or higher (less verbose) will be output.
@@ -22,13 +20,11 @@ enum LogLevel {
  * This could be dynamically configured (e.g., via environment variables or application settings).
  */
 const CURRENT_LOG_LEVEL: LogLevel = LogLevel.DEBUG; // Set to LogLevel.INFO for production builds
-
 /**
  * Generates a standardized ISO timestamp string.
  * @returns Current timestamp in ISO format.
  */
 const getTimestamp = (): string => new Date().toISOString();
-
 /**
  * Formats a log message with timestamp, level, module name, and optional data.
  * @param level - The log level string (e.g., "DEBUG", "INFO").
@@ -55,14 +51,12 @@ const formatMessage = (level: string, module: string, message: string, data?: an
   }
   return logMessage;
 };
-
 /**
  * Logger class providing methods for different log levels.
  * Instances are typically created per module or major component.
  */
 class Logger {
   private readonly module: string;
-
   /**
    * Creates a new Logger instance.
    * @param moduleName - The name of the module this logger instance will be used for.
@@ -71,7 +65,6 @@ class Logger {
   constructor(moduleName: string) {
     this.module = moduleName;
   }
-
   /**
    * Logs a debug message if the current log level allows for it.
    * Includes the module name, timestamp, and optional data.
@@ -83,7 +76,6 @@ class Logger {
       console.debug(formatMessage('DEBUG', this.module, message, data));
     }
   }
-
   /**
    * Logs an informational message if the current log level allows for it.
    * Includes the module name, timestamp, and optional data.
@@ -95,7 +87,6 @@ class Logger {
       console.info(formatMessage('INFO', this.module, message, data));
     }
   }
-
   /**
    * Logs a warning message if the current log level allows for it.
    * Includes the module name, timestamp, and optional data.
@@ -107,7 +98,6 @@ class Logger {
       console.warn(formatMessage('WARN', this.module, message, data));
     }
   }
-
   /**
    * Logs an error message if the current log level allows for it.
    * Includes the module name, timestamp, details from an Error object (if provided), and optional data.
@@ -136,7 +126,6 @@ class Logger {
     }
   }
 }
-
 /**
  * Factory function to create Logger instances.
  * This is the preferred way to get a logger for a specific module.
@@ -146,7 +135,6 @@ class Logger {
 export const createLogger = (moduleName: string): Logger => {
   return new Logger(moduleName);
 };
-
 /**
  * A default logger instance for general application-level logging or for use
  * in places where a module-specific logger is not readily available.

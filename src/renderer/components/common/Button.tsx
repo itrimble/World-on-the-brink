@@ -36,11 +36,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   rightIcon?: React.ReactElement;
   /** Additional CSS classes to apply to the button. */
   className?: string;
- comprehensive-refactor
   /** Accessible label for the button, especially important for icon-only buttons. */
   'aria-label'?: string;
-
- main
 }
 
 /**
