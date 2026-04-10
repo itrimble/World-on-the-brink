@@ -207,29 +207,62 @@ async function makeStrategicDecisions(state: any, dispatch: any): Promise<AIDeci
 }
 
 /**
- * AI crisis decision logic
+ * AI crisis decision logic — "outrage excess" brinkmanship model.
+ *
+ * Inspired by Chris Crawford's Balance of Power and the Equilibrium design:
+ * The AI evaluates how "outrageous" the player's actions feel relative to its
+ * own interests. High outrage → escalate. The threshold rises with escalation
+ * level, making the AI progressively more reluctant to push at higher levels.
+ * This creates authentic chicken-game dynamics where backing down early is cheap
+ * but late backing-down is humiliating.
  */
 function decideCrisisAction(crises: any[], aiState: any, isLosingToPlayer: boolean): AIDecision | null {
   if (!crises.length) return null;
 
-  const crisis = crises[0]; // Focus on first crisis
-  const shouldEscalate = aiState.aggressionLevel > 60 || (isLosingToPlayer && Math.random() > 0.5);
+  // Focus on the most dangerous crisis first
+  const sortedCrises = [...crises].sort((a, b) => b.escalationLevel - a.escalationLevel);
+  const crisis = sortedCrises[0];
 
-  if (shouldEscalate && crisis.escalationLevel < 6) {
+  // Calculate outrage excess (core brinkmanship mechanic)
+  const baseTension = crisis.escalationLevel * 8;
+  const aggressionBonus = aiState.aggressionLevel * 0.4;
+  const playerInitiatedBonus = crisis.lastActionBy !== 'ai' ? 15 : 0;
+  const losingBonus = isLosingToPlayer ? 12 : 0;
+  const outrageExcess = baseTension + aggressionBonus + playerInitiatedBonus + losingBonus;
+
+  // Threshold rises with escalation level — harder to justify escalation at high levels
+  const escalationThreshold = 55 + (crisis.escalationLevel * 14);
+
+  // Never escalate past level 6 (nuclear war is failure for everyone)
+  if (outrageExcess > escalationThreshold && crisis.escalationLevel < 6) {
+    // AI escalates — stand firm or push harder
+    const prestigeGain = Math.min(8, 3 + crisis.escalationLevel);
     return {
       type: 'crisis_action',
       target: crisis.id,
       action: `Escalate ${crisis.name}`,
-      expectedPrestige: 4 + Math.floor(Math.random() * 3),
-      reasoning: `Escalating crisis to gain prestige advantage`
+      expectedPrestige: prestigeGain,
+      reasoning: `Outrage excess (${Math.round(outrageExcess)}) exceeds threshold (${escalationThreshold}) — standing firm`
     };
-  } else if (crisis.escalationLevel > 3 && Math.random() > 0.6) {
+  } else if (outrageExcess > escalationThreshold * 0.5 || aiState.aggressionLevel > 65) {
+    // AI stands firm — neither escalates nor backs down
+    return {
+      type: 'crisis_action',
+      target: crisis.id,
+      action: `Stand firm on ${crisis.name}`,
+      expectedPrestige: 1,
+      reasoning: `Maintaining position — outrage moderate, waiting for player to blink`
+    };
+  } else if (crisis.escalationLevel >= 3) {
+    // AI backs down — de-escalate to preserve stability
+    // Prestige cost for backing down increases with level (mirrors original Balance of Power)
+    const prestigeCost = Math.max(0, crisis.escalationLevel - 2);
     return {
       type: 'crisis_action',
       target: crisis.id,
       action: `De-escalate ${crisis.name}`,
-      expectedPrestige: 2,
-      reasoning: `Diplomatic resolution to maintain stability`
+      expectedPrestige: 2 - prestigeCost,
+      reasoning: `Backing down to prevent systemic collapse — calculated retreat`
     };
   }
 
@@ -247,17 +280,23 @@ function decidePolicyAction(countries: any, aiState: any, playerState: any, isLa
   const country = countries[targetCountry];
 
   // Choose policy based on AI priorities and aggression
+  // Includes both classic and modern Global Skills
   let policyType: string;
   let expectedPrestige: number;
 
   if (aiState.aggressionLevel > 70 && Math.random() > 0.6) {
-    policyType = isLateGame ? 'Military Intervention' : 'Aid to Insurgents';
+    const aggressiveOptions = isLateGame
+      ? ['Military Intervention', 'Cyber Operation', 'Sanctions']
+      : ['Aid to Insurgents', 'Destabilization', 'Cyber Operation'];
+    policyType = aggressiveOptions[Math.floor(Math.random() * aggressiveOptions.length)];
     expectedPrestige = 5 + Math.floor(Math.random() * 4);
   } else if (aiState.aggressionLevel < 40 || Math.random() > 0.7) {
-    policyType = Math.random() > 0.5 ? 'Economic Aid' : 'Diplomatic Pressure';
+    const cooperativeOptions = ['Economic Aid', 'Diplomatic Summit', 'Green Energy Investment', 'Cultural Export', 'Tech Sharing Pact'];
+    policyType = cooperativeOptions[Math.floor(Math.random() * cooperativeOptions.length)];
     expectedPrestige = 2 + Math.floor(Math.random() * 3);
   } else {
-    policyType = Math.random() > 0.5 ? 'Military Aid' : 'Treaties';
+    const balancedOptions = ['Military Aid', 'Treaties', 'Stabilization Mission', 'Trade Deal'];
+    policyType = balancedOptions[Math.floor(Math.random() * balancedOptions.length)];
     expectedPrestige = 3 + Math.floor(Math.random() * 3);
   }
 

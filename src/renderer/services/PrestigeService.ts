@@ -1,8 +1,6 @@
 // src/renderer/services/PrestigeService.ts
 
-import { Country, Policy, Crisis } from '../types';
-
-type PolicyType = Policy['type'];
+import { Country, Policy, Crisis, PrestigePillars, PolicyType } from '../types';
 
 export interface PrestigeChange {
   source: 'policy' | 'crisis' | 'diplomacy' | 'sphere_influence' | 'turn_processing';
@@ -12,6 +10,8 @@ export interface PrestigeChange {
   relatedCountry?: string;
   relatedCrisis?: string;
   timestamp: number;
+  /** Per-pillar prestige deltas (Prestige 2.0) */
+  pillarDeltas?: Partial<PrestigePillars>;
 }
 
 export interface PrestigeCalculationContext {
@@ -120,7 +120,7 @@ export class PrestigeService {
    * Get base prestige value for different policy types.
    */
   private static getPolicyBasePrestigeValue(policyType: PolicyType): number {
-    const policyValues: Record<PolicyType, number> = {
+    const policyValues: Record<string, number> = {
       'military_aid': 15,
       'insurgency_aid': 20,
       'intervention': 35,
@@ -128,10 +128,51 @@ export class PrestigeService {
       'destabilization': 25,
       'diplomatic_pressure': 12,
       'treaty': 30,
-      'trade_policy': 8
+      'trade_policy': 8,
+      // Modern Global Skills
+      'cyber_operation': 22,
+      'green_energy': 12,
+      'tech_sharing': 18,
+      'cultural_export': 14,
+      'sanctions': 20,
+      'stabilization_mission': 16,
+      'diplomatic_summit': 25,
     };
-    
+
     return policyValues[policyType] || 10;
+  }
+
+  /**
+   * Calculate per-pillar prestige impact for a policy action (Prestige 2.0).
+   * Returns deltas for each of the four pillars.
+   */
+  static getPolicyPillarImpact(policyType: PolicyType, success: boolean): Partial<PrestigePillars> {
+    const multiplier = success ? 1 : -0.3;
+    const pillarMap: Record<string, Partial<PrestigePillars>> = {
+      // Classic policies
+      'military_aid':         { military: 3, economic: 1 },
+      'insurgency_aid':       { military: 2, cultural: -1 },
+      'intervention':         { military: 5, cultural: -2 },
+      'economic_aid':         { economic: 3, cultural: 1 },
+      'destabilization':      { military: 2, cultural: -2, tech: 1 },
+      'diplomatic_pressure':  { cultural: 2 },
+      'treaty':               { cultural: 3, economic: 2 },
+      'trade_policy':         { economic: 3 },
+      // Modern Global Skills
+      'cyber_operation':      { tech: 4, military: 1 },
+      'green_energy':         { economic: 2, cultural: 2, tech: 1 },
+      'tech_sharing':         { tech: 4, economic: 1 },
+      'cultural_export':      { cultural: 4, economic: 1 },
+      'sanctions':            { economic: -1, military: 2 },
+      'stabilization_mission':{ military: 2, cultural: 2 },
+      'diplomatic_summit':    { cultural: 3, economic: 1 },
+    };
+    const base = pillarMap[policyType] || { economic: 1 };
+    const result: Partial<PrestigePillars> = {};
+    for (const [key, val] of Object.entries(base)) {
+      result[key as keyof PrestigePillars] = Math.round(val * multiplier);
+    }
+    return result;
   }
 
   /**

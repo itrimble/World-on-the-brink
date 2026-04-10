@@ -70,24 +70,44 @@ export interface Country {
 }
 // Placeholder for other shared types if needed by components.
 
+// Prestige 2.0: Four-pillar prestige system (inspired by Equilibrium design)
+export type PrestigePillar = 'economic' | 'military' | 'cultural' | 'tech';
+
+export interface PrestigePillars {
+  economic: number;
+  military: number;
+  cultural: number;
+  tech: number;
+}
+
+// Modern crisis types reflecting 2030s geopolitical realities
+export type ModernCrisisType =
+  | 'diplomatic' | 'military' | 'economic' | 'regional_conflict'
+  // New modern types
+  | 'cyber' | 'climate' | 'tech_governance' | 'space'
+  | 'supply_chain' | 'migration' | 'resource' | 'information';
+
 // From PRD 4.2 Crisis Management System
 export interface Crisis {
-  id: string; // Unique identifier for the crisis
-  name: string; // Short name or description of the crisis (e.g., "Berlin Blockade")
-  description: string; // More detailed description of the crisis
-  involvedCountries: string[]; // Array of country IDs involved
-  instigatorCountryId?: string; // Country ID that initiated the crisis action
-  targetCountryId?: string; // Country ID that is the target of the crisis action
-  type: 'diplomatic' | 'military' | 'economic' | 'regional_conflict'; // Type of crisis
-  escalationLevel: 1 | 2 | 3 | 4 | 5 | 6 | 7; // Corresponds to DefCon levels + initial stages. 1=Question, 7=Nuclear War
-  prestigeAtStakeSuperpowerA: number; // Prestige points at stake for superpower A
-  prestigeAtStakeSuperpowerB: number; // Prestige points at stake for superpower B (if applicable)
-  status: 'emerging' | 'active' | 'resolved_peacefully' | 'resolved_conflict' | 'escalated_war'; // Current status
-  turnInitiated: number; // Game turn when the crisis began
-  // Optional fields for specific crisis actions and responses
-  lastActionBy?: string; // Player/AI that took the last action
-  superpowerAResponse?: string; // Superpower A's stance or response
-  superpowerBResponse?: string; // Superpower B's stance or response
+  id: string;
+  name: string;
+  description: string;
+  involvedCountries: string[];
+  instigatorCountryId?: string;
+  targetCountryId?: string;
+  type: ModernCrisisType;
+  escalationLevel: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  prestigeAtStakeSuperpowerA: number;
+  prestigeAtStakeSuperpowerB: number;
+  // Per-pillar prestige stakes
+  pillarStakes?: Partial<PrestigePillars>;
+  status: 'emerging' | 'active' | 'resolved_peacefully' | 'resolved_conflict' | 'escalated_war';
+  turnInitiated: number;
+  lastActionBy?: string;
+  superpowerAResponse?: string;
+  superpowerBResponse?: string;
+  // Template ID for modern crisis scenarios
+  templateId?: string;
 }
 
 // From PRD 4.3 Policy Implementation System
@@ -110,23 +130,33 @@ export interface PolicyEffect {
   // Add other specific effects as needed
 }
 
+// Modern policy types: original 8 + new Global Skills from Equilibrium design
+export type PolicyType =
+  // Classic types (backward compatible)
+  | 'military_aid' | 'insurgency_aid' | 'intervention' | 'economic_aid'
+  | 'destabilization' | 'diplomatic_pressure' | 'treaty' | 'trade_policy'
+  // Modern Global Skills
+  | 'cyber_operation' | 'green_energy' | 'tech_sharing' | 'cultural_export'
+  | 'sanctions' | 'stabilization_mission' | 'diplomatic_summit';
+
 export interface Policy {
-  id: string; // Unique identifier for the policy (e.g., "military_aid_friendly")
-  name: string; // Display name of the policy (e.g., "Provide Military Aid")
-  description: string; // Detailed description
-  type: 'military_aid' | 'insurgency_aid' | 'intervention' | 'economic_aid' | 'destabilization' | 'diplomatic_pressure' | 'treaty' | 'trade_policy'; // From PRD 4.3
-  cost: PolicyCost; // Costs to implement
-  effects: PolicyEffect[]; // Potential effects
-  duration?: number; // Duration in turns, if applicable
-  requirements?: { // Conditions to be met to enact this policy
+  id: string;
+  name: string;
+  description: string;
+  type: PolicyType;
+  cost: PolicyCost;
+  effects: PolicyEffect[];
+  duration?: number;
+  // Per-pillar prestige impact (Prestige 2.0)
+  pillarImpact?: Partial<PrestigePillars>;
+  requirements?: {
     minRelationWithTarget?: number;
     maxRelationWithTarget?: number;
-    targetGovernmentType?: string[]; // e.g., ['democracy', 'monarchy']
-    targetAlignment?: string[]; // e.g., ['western', 'neutral']
+    targetGovernmentType?: string[];
+    targetAlignment?: string[];
     isTargetSuperpower?: boolean;
-    // Add other conditions
   };
-  status?: 'available' | 'active' | 'cooldown' | 'expired'; // Status of the policy instance
-  targetCountryId?: string; // For policies enacted on a specific country
-  turnEnacted?: number; // Turn the policy was enacted
+  status?: 'available' | 'active' | 'cooldown' | 'expired';
+  targetCountryId?: string;
+  turnEnacted?: number;
 }

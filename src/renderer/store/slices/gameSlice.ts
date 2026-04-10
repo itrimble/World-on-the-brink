@@ -102,6 +102,18 @@ const gameSlice = createSlice({
         state.gamePhase = 'over';
       }
     },
+    // Reset game to pregame state (used after Systemic Collapse / Game Over)
+    resetGame: (state) => {
+      state.currentTurn = 0;
+      state.currentYear = 2025;
+      state.gamePhase = 'pregame';
+      state.oneMoreTurnTaken = false;
+      state.isLoadingNextTurn = false;
+      state.error = null;
+      state.victoryCondition = 'none';
+      state.victoryReason = null;
+      state.aiPrestige = 0;
+    },
     loadGameState: (state, action: PayloadAction<{ currentTurn: number; currentYear: number; difficulty: 'easy' | 'normal' | 'hard' | 'realistic' }>) => {
       state.currentTurn = action.payload.currentTurn;
       state.currentYear = action.payload.currentYear;
@@ -229,7 +241,7 @@ export const advanceTurn = createAsyncThunk<void, void, { state: any }>(
   }
 );
 
-export const { incrementTurn, setGamePhase, startGame, takeOneMoreTurn, setDifficulty, adjustAIPrestige, setVictoryCondition, loadGameState } = gameSlice.actions;
+export const { incrementTurn, setGamePhase, startGame, takeOneMoreTurn, setDifficulty, adjustAIPrestige, setVictoryCondition, loadGameState, resetGame } = gameSlice.actions;
 export default gameSlice.reducer;
 
 // Selectors (optional, can also be defined in the component or a dedicated selectors file)

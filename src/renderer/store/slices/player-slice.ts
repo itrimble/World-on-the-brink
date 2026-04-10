@@ -1,13 +1,15 @@
 
 // src/renderer/features/player/playerSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Policy } from '../../types';
+import { Policy, PrestigePillars } from '../../types';
 import { PrestigeChange } from '../../services/PrestigeService';
 
 interface PlayerState {
   faction: string;
   politicalCapital: number;
   prestige: number;
+  // Prestige 2.0: Four-pillar breakdown
+  prestigePillars: PrestigePillars;
   militaryReserves: number;
   economicReserves: number;
   defcon: 5 | 4 | 3 | 2 | 1;
@@ -24,12 +26,13 @@ interface PlayerState {
 }
 
 const initialState: PlayerState = {
-  faction: 'usa', // Default to USA
+  faction: 'usa',
   politicalCapital: 100,
   prestige: 0,
-  militaryReserves: 500000, // Number of troops available for deployment
-  economicReserves: 10000, // Economic aid available (in millions)
-  defcon: 5, // Start at normal readiness
+  prestigePillars: { economic: 50, military: 50, cultural: 50, tech: 50 },
+  militaryReserves: 500000,
+  economicReserves: 10000,
+  defcon: 5,
   activePolicies: [],
   diplomaticInfluence: {},
   prestigeHistory: [],
@@ -59,10 +62,18 @@ const playerSlice = createSlice({
     // Apply prestige change with detailed tracking
     applyPrestigeChange: (state, action: PayloadAction<{ change: PrestigeChange; turn: number }>) => {
       const { change, turn } = action.payload;
-      
-      // Update prestige
+
+      // Update aggregate prestige
       state.prestige += change.amount;
-      
+
+      // Update pillar-specific prestige if provided
+      if (change.pillarDeltas) {
+        for (const [pillar, delta] of Object.entries(change.pillarDeltas)) {
+          const key = pillar as keyof PrestigePillars;
+          state.prestigePillars[key] = Math.max(0, Math.min(100, state.prestigePillars[key] + delta));
+        }
+      }
+
       // Add to history
       state.prestigeHistory.push({
         turn,
@@ -70,14 +81,23 @@ const playerSlice = createSlice({
         change: change.amount,
         timestamp: change.timestamp
       });
-      
+
       // Add detailed change record
       state.prestigeChanges.push(change);
-      
+
       // Keep only last 20 detailed changes to prevent memory bloat
       if (state.prestigeChanges.length > 20) {
         state.prestigeChanges = state.prestigeChanges.slice(-20);
       }
+    },
+
+    // Update a single prestige pillar directly
+    adjustPrestigePillar: (state, action: PayloadAction<{ pillar: keyof PrestigePillars; delta: number }>) => {
+      const { pillar, delta } = action.payload;
+      state.prestigePillars[pillar] = Math.max(0, Math.min(100, state.prestigePillars[pillar] + delta));
+      // Also update aggregate prestige as the average
+      const pillars = state.prestigePillars;
+      state.prestige = Math.round((pillars.economic + pillars.military + pillars.cultural + pillars.tech) / 4);
     },
 
     // Record turn prestige for comparison
@@ -112,14 +132,15 @@ const playerSlice = createSlice({
     },
     
     // Reset player state (for new game)
-    resetPlayer: (state, action: PayloadAction<{ 
+    resetPlayer: (state, action: PayloadAction<{
       faction: string;
       prestige?: number;
       politicalCapital?: number;
       economicReserves?: number;
       militaryCapacity?: number;
+      prestigePillars?: Partial<PrestigePillars>;
     }>) => {
-      const { faction, prestige, politicalCapital, economicReserves, militaryCapacity } = action.payload;
+      const { faction, prestige, politicalCapital, economicReserves, militaryCapacity, prestigePillars } = action.payload;
       return {
         ...initialState,
         faction,
@@ -127,6 +148,7 @@ const playerSlice = createSlice({
         politicalCapital: politicalCapital || initialState.politicalCapital,
         economicReserves: economicReserves || initialState.economicReserves,
         militaryReserves: militaryCapacity || initialState.militaryReserves,
+        prestigePillars: { ...initialState.prestigePillars, ...prestigePillars },
       };
     },
     
@@ -173,6 +195,7 @@ export const {
   adjustPoliticalCapital,
   adjustPrestige,
   applyPrestigeChange,
+  adjustPrestigePillar,
   recordTurnPrestige,
   setDefcon,
   addPolicy,
@@ -197,7 +220,15 @@ export const selectRecentPrestigeChanges = (state: { player: PlayerState }) => s
 export const selectLastTurnPrestige = (state: { player: PlayerState }) => state.player.lastTurnPrestige;
 
 // Computed selectors
-export const selectPrestigeChange = (state: { player: PlayerState }) => 
+export const selectPrestigeChange = (state: { player: PlayerState }) =>
   state.player.prestige - state.player.lastTurnPrestige;
+
+export const selectPrestigePillars = (state: { player: PlayerState }) => state.player.prestigePillars;
+
+// Computed: total prestige as sum of pillars
+export const selectTotalPillarPrestige = (state: { player: PlayerState }) => {
+  const p = state.player.prestigePillars;
+  return p.economic + p.military + p.cultural + p.tech;
+};
 
 export default playerSlice.reducer;
