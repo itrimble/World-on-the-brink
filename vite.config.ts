@@ -12,7 +12,9 @@ export default defineConfig({
     // Allow the dev server to run despite TypeScript errors
     fs: {
       strict: false
-    }
+    },
+    // Use a port that avoids conflicts with local Docker containers
+    port: 5173,
   },
   build: {
     outDir: 'dist',

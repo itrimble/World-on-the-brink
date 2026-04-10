@@ -1,8 +1,10 @@
 // src/renderer/services/UnifiedSaveService.ts
+import { Capacitor } from '@capacitor/core';
 import { SaveGameState, SavedGameMetadata } from '../../shared/types/game';
 import { createLogger } from '../utils/logger';
 import { saveGameService } from './save-game-service';
 import { indexedDBSaveService } from './IndexedDBSaveService';
+import { capacitorSaveService } from './CapacitorSaveService';
 
 const logger = createLogger('UnifiedSaveService');
 
@@ -12,6 +14,7 @@ const logger = createLogger('UnifiedSaveService');
 interface SaveEnvironment {
   isElectron: boolean;
   isWeb: boolean;
+  isCapacitorNative: boolean;
   hasIndexedDB: boolean;
   hasElectronAPI: boolean;
 }
@@ -256,8 +259,10 @@ export class UnifiedSaveService {
     await this.ensureInitialized();
 
     const backend = this.getPrimaryBackend();
-    
-    if (backend === 'indexeddb') {
+
+    if (backend === 'capacitor') {
+      return await capacitorSaveService.quickSave();
+    } else if (backend === 'indexeddb') {
       return await indexedDBSaveService.quickSave();
     } else {
       return await saveGameService.quickSave();
@@ -276,7 +281,9 @@ export class UnifiedSaveService {
     // Try primary first
     let result: { success: boolean; data?: SaveGameState; error?: string };
     
-    if (primary === 'indexeddb') {
+    if (primary === 'capacitor') {
+      result = await capacitorSaveService.quickLoad();
+    } else if (primary === 'indexeddb') {
       result = await indexedDBSaveService.quickLoad();
     } else {
       result = await saveGameService.quickLoad();
@@ -284,7 +291,9 @@ export class UnifiedSaveService {
 
     // If primary fails and we have a fallback, try it
     if (!result.success && fallback && fallback !== primary) {
-      if (fallback === 'indexeddb') {
+      if (fallback === 'capacitor') {
+        result = await capacitorSaveService.quickLoad();
+      } else if (fallback === 'indexeddb') {
         result = await indexedDBSaveService.quickLoad();
       } else {
         result = await saveGameService.quickLoad();
@@ -301,8 +310,10 @@ export class UnifiedSaveService {
     await this.ensureInitialized();
 
     const backend = this.getPrimaryBackend();
-    
-    if (backend === 'indexeddb') {
+
+    if (backend === 'capacitor') {
+      return await capacitorSaveService.autoSave();
+    } else if (backend === 'indexeddb') {
       return await indexedDBSaveService.autoSave();
     } else {
       return await saveGameService.autoSave();
@@ -394,20 +405,26 @@ export class UnifiedSaveService {
 
   private detectEnvironment(): SaveEnvironment {
     const isElectron = !!(window as any).electronAPI;
-    const isWeb = !isElectron;
+    const isCapacitorNative = Capacitor.isNativePlatform();
+    const isWeb = !isElectron && !isCapacitorNative;
     const hasIndexedDB = 'indexedDB' in window;
     const hasElectronAPI = !!(window as any).electronAPI;
 
     return {
       isElectron,
       isWeb,
+      isCapacitorNative,
       hasIndexedDB,
       hasElectronAPI
     };
   }
 
-  private getPrimaryBackend(): 'electron' | 'indexeddb' {
-    // Prefer Electron IPC when available for better performance and file system integration
+  private getPrimaryBackend(): 'electron' | 'indexeddb' | 'capacitor' {
+    // Prefer Capacitor Preferences when running on iOS/Android
+    if (this.environment.isCapacitorNative) {
+      return 'capacitor';
+    }
+    // Prefer Electron IPC when available
     if (this.environment.hasElectronAPI) {
       return 'electron';
     }
@@ -415,20 +432,22 @@ export class UnifiedSaveService {
     if (this.environment.hasIndexedDB) {
       return 'indexeddb';
     }
-    // Default to electron (will handle errors gracefully)
-    return 'electron';
+    return 'indexeddb';
   }
 
-  private getFallbackBackend(): 'electron' | 'indexeddb' | null {
+  private getFallbackBackend(): 'electron' | 'indexeddb' | 'capacitor' | null {
     const primary = this.getPrimaryBackend();
-    
+
+    if (primary === 'capacitor' && this.environment.hasIndexedDB) {
+      return 'indexeddb';
+    }
     if (primary === 'electron' && this.environment.hasIndexedDB) {
       return 'indexeddb';
     }
     if (primary === 'indexeddb' && this.environment.hasElectronAPI) {
       return 'electron';
     }
-    
+
     return null;
   }
 
@@ -438,32 +457,40 @@ export class UnifiedSaveService {
     }
   }
 
-  private async saveWithBackend(backend: 'electron' | 'indexeddb', fileName: string, displayName?: string) {
-    if (backend === 'indexeddb') {
+  private async saveWithBackend(backend: 'electron' | 'indexeddb' | 'capacitor', fileName: string, displayName?: string) {
+    if (backend === 'capacitor') {
+      return await capacitorSaveService.saveGame(fileName, displayName);
+    } else if (backend === 'indexeddb') {
       return await indexedDBSaveService.saveGame(fileName, displayName);
     } else {
       return await saveGameService.saveGame(fileName, displayName);
     }
   }
 
-  private async loadWithBackend(backend: 'electron' | 'indexeddb', fileName: string) {
-    if (backend === 'indexeddb') {
+  private async loadWithBackend(backend: 'electron' | 'indexeddb' | 'capacitor', fileName: string) {
+    if (backend === 'capacitor') {
+      return await capacitorSaveService.loadGame(fileName);
+    } else if (backend === 'indexeddb') {
       return await indexedDBSaveService.loadGame(fileName);
     } else {
       return await saveGameService.loadGame(fileName);
     }
   }
 
-  private async listWithBackend(backend: 'electron' | 'indexeddb') {
-    if (backend === 'indexeddb') {
+  private async listWithBackend(backend: 'electron' | 'indexeddb' | 'capacitor') {
+    if (backend === 'capacitor') {
+      return await capacitorSaveService.listSavedGames();
+    } else if (backend === 'indexeddb') {
       return await indexedDBSaveService.listSavedGames();
     } else {
       return await saveGameService.listSavedGames();
     }
   }
 
-  private async deleteWithBackend(backend: 'electron' | 'indexeddb', fileName: string) {
-    if (backend === 'indexeddb') {
+  private async deleteWithBackend(backend: 'electron' | 'indexeddb' | 'capacitor', fileName: string) {
+    if (backend === 'capacitor') {
+      return await capacitorSaveService.deleteSavedGame(fileName);
+    } else if (backend === 'indexeddb') {
       return await indexedDBSaveService.deleteSavedGame(fileName);
     } else {
       return await saveGameService.deleteSavedGame(fileName);

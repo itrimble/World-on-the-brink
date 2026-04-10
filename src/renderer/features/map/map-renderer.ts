@@ -17,9 +17,15 @@ import {
 import {
   MapInteractionData,
   handleMouseClick,
-  // updateRaycasterForCountryMeshes, // This is now called by handleMouseMove
-  handleMouseMove, // Import handleMouseMove
+  handleMouseMove,
 } from './map-interaction';
+import {
+  TouchState,
+  createTouchState,
+  handleTouchStart,
+  handleTouchMove,
+  handleTouchEnd,
+} from './map-touch';
 // import { MapMode, Country } from '../../types'; // Will be imported from map-state
 import {
   MapState,
@@ -53,6 +59,7 @@ export class MapRenderer {
   private interactionData: MapInteractionData | null = null;
   private loadedCountriesData: Record<string, Country> = {};
   private clock: THREE.Clock; // For deltaTime
+  private touchState: TouchState;
 
   private onCountrySelectCallback: (countryId: string | null) => void;
 
@@ -81,6 +88,7 @@ export class MapRenderer {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.clock = new THREE.Clock();
+    this.touchState = createTouchState();
 
     this.mapState = createInitialMapState();
     // Initial camera position is set, then controlled by updateCameraMovement via animate()
@@ -95,15 +103,25 @@ export class MapRenderer {
     this.onClick = this.onClick.bind(this);
     this.onWindowResize = this.onWindowResize.bind(this);
     this.onMouseWheel = this.onMouseWheel.bind(this);
-    this.onMouseDown = this.onMouseDown.bind(this); // Bind mousedown
-    this.onMouseUp = this.onMouseUp.bind(this);     // Bind mouseup
+    this.onMouseDown = this.onMouseDown.bind(this);
+    this.onMouseUp = this.onMouseUp.bind(this);
+    this.onTouchStart = this.onTouchStart.bind(this);
+    this.onTouchMove = this.onTouchMove.bind(this);
+    this.onTouchEnd = this.onTouchEnd.bind(this);
 
+    // Mouse events (desktop)
     container.addEventListener('mousemove', this.onMouseMove);
     container.addEventListener('click', this.onClick);
     container.addEventListener('wheel', this.onMouseWheel);
-    container.addEventListener('mousedown', this.onMouseDown); // Add mousedown listener
-    container.addEventListener('mouseup', this.onMouseUp);     // Add mouseup listener
-    container.addEventListener('mouseleave', this.onMouseUp); // Also stop dragging if mouse leaves container
+    container.addEventListener('mousedown', this.onMouseDown);
+    container.addEventListener('mouseup', this.onMouseUp);
+    container.addEventListener('mouseleave', this.onMouseUp);
+
+    // Touch events (iOS / mobile)
+    container.addEventListener('touchstart', this.onTouchStart, { passive: false });
+    container.addEventListener('touchmove', this.onTouchMove, { passive: false });
+    container.addEventListener('touchend', this.onTouchEnd, { passive: false });
+    container.addEventListener('touchcancel', this.onTouchEnd, { passive: false });
 
     window.addEventListener('resize', this.onWindowResize);
 
@@ -281,6 +299,41 @@ export class MapRenderer {
     }
   }
 
+  // --- Touch handlers for iOS / mobile ---
+
+  private onTouchStart(event: TouchEvent): void {
+    if (!this.interactionData) return;
+    handleTouchStart(event, this.touchState, this.interactionData);
+  }
+
+  private onTouchMove(event: TouchEvent): void {
+    if (!this.interactionData) return;
+    handleTouchMove(event, this.touchState, this.interactionData, (newZoom: number) => {
+      this.mapState = setZoomLevel(this.mapState, newZoom);
+      if (this.interactionData) {
+        this.interactionData.zoomLevel = this.mapState.zoomLevel;
+      }
+    });
+  }
+
+  private onTouchEnd(event: TouchEvent): void {
+    if (!this.interactionData) return;
+    handleTouchEnd(
+      event,
+      this.touchState,
+      this.raycaster,
+      this.mouse,
+      this.camera,
+      this.renderer,
+      this.interactionData
+    );
+
+    // Sync hovered state after touch interaction
+    if (this.interactionData && this.mapState.hoveredCountryId !== this.interactionData.hoveredCountryId) {
+      this.mapState = setHoveredCountry(this.mapState, this.interactionData.hoveredCountryId);
+    }
+  }
+
   private onMouseWheel(event: WheelEvent): void {
     event.preventDefault();
     const zoomDeltaFactor = event.deltaY > 0 ? -0.2 : 0.2; // Adjusted zoomDeltaFactor
@@ -336,6 +389,10 @@ export class MapRenderer {
         parentElement.removeEventListener('mousedown', this.onMouseDown);
         parentElement.removeEventListener('mouseup', this.onMouseUp);
         parentElement.removeEventListener('mouseleave', this.onMouseUp);
+        parentElement.removeEventListener('touchstart', this.onTouchStart);
+        parentElement.removeEventListener('touchmove', this.onTouchMove);
+        parentElement.removeEventListener('touchend', this.onTouchEnd);
+        parentElement.removeEventListener('touchcancel', this.onTouchEnd);
         parentElement.removeChild(this.renderer.domElement);
     }
 
